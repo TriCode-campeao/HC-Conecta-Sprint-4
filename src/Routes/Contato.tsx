@@ -1,4 +1,4 @@
-import BotaoVoltarHome from '../components/BotaoVoltarHome/BotaoVoltarHome'
+import BotaoVoltarHome from '../Components/BotaoVoltarHome/BotaoVoltarHome.tsx'
 
 export default function Contato() {
   return (
