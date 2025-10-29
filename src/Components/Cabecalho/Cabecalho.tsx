@@ -27,7 +27,7 @@ export default function Header() {
                 className="w-12 h-12 rounded-lg"
               />
             </Link>
-            <div className="flex items-center">
+            <div className="flex items-center gap-2">
               <span className="text-sm text-slate-600 mr-2">Logado como:</span>
               <Link
                 to="/consultas"
@@ -35,6 +35,12 @@ export default function Header() {
               >
                 Paciente
               </Link>
+              <button
+                type="button"
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+              >
+                X
+              </button>
             </div>
           </div>
 
