@@ -19,7 +19,7 @@ export default function Header() {
     <header className="bg-white border-b border-gray-200">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <div className="flex-shrink-0">
+          <div className="flex items-center gap-8">
             <Link to="/" className="flex items-center">
               <img
                 src="/img/hc.png"
@@ -27,6 +27,15 @@ export default function Header() {
                 className="w-12 h-12 rounded-lg"
               />
             </Link>
+            <div className="flex items-center">
+              <span className="text-sm text-slate-600 mr-2">Logado como:</span>
+              <Link
+                to="/consultas"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              >
+                Paciente
+              </Link>
+            </div>
           </div>
 
           <nav className="hidden md:flex space-x-1" role="navigation" aria-label="Menu principal">
