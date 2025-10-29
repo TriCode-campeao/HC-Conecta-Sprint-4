@@ -1,4 +1,4 @@
-import BotaoVoltarHome from '../Components/BotaoVoltarHome/BotaoVoltarHome'
+import BotaoVoltarHome from '../../Components/BotaoVoltarHome/BotaoVoltarHome'
 
 export default function Sobre() {
   return (

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Botao from '../Botao/Botao'
 
@@ -6,10 +6,24 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
+  const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem('role') === 'admin')
+  const isLoginPage = location.pathname === '/login'
 
   const handleLogout = () => {
+    sessionStorage.removeItem('role')
+    sessionStorage.removeItem('username')
     navigate('/login')
   }
+
+  useEffect(() => {
+    setIsAdmin(sessionStorage.getItem('role') === 'admin')
+  }, [location])
+
+  useEffect(() => {
+    const onStorage = () => setIsAdmin(sessionStorage.getItem('role') === 'admin')
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -25,7 +39,7 @@ export default function Header() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-8">
-            <Link to="/" className="flex items-center">
+            <Link to={isAdmin ? '/admin' : '/'} className="flex items-center">
               <img
                 src="/img/hc.png"
                 alt="HC Conecta Logo"
@@ -35,10 +49,10 @@ export default function Header() {
             <div className="flex items-center gap-2">
               <span className="text-sm text-slate-600 mr-2">Logado como:</span>
               <Link
-                to="/consultas"
+                to={isAdmin ? '/admin' : '/consultas'}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
               >
-                Paciente
+                {isAdmin ? 'Admin' : 'Paciente'}
               </Link>
               <button
                 type="button"
@@ -50,39 +64,43 @@ export default function Header() {
             </div>
           </div>
 
-          <nav className="hidden md:flex space-x-1" role="navigation" aria-label="Menu principal">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${location.pathname === item.href
-                    ? 'text-blue-600 bg-blue-100'
-                    : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
-                  }`}
-                aria-current={location.pathname === item.href ? 'page' : undefined}
-              >
-                {item.name}
-              </Link>
-            ))}
-          </nav>
+          {!isAdmin && !isLoginPage && (
+            <nav className="hidden md:flex space-x-1" role="navigation" aria-label="Menu principal">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${location.pathname === item.href
+                      ? 'text-blue-600 bg-blue-100'
+                      : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+                    }`}
+                  aria-current={location.pathname === item.href ? 'page' : undefined}
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </nav>
+          )}
 
-          <div className="md:hidden">
-            <Botao
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              variant="primary"
-              size="sm"
-              className="p-2"
-              aria-label="Abrir menu de navegação"
-              aria-expanded={isMenuOpen}
-            >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </Botao>
-          </div>
+          {!isAdmin && !isLoginPage && (
+            <div className="md:hidden">
+              <Botao
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                variant="primary"
+                size="sm"
+                className="p-2"
+                aria-label="Abrir menu de navegação"
+                aria-expanded={isMenuOpen}
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </Botao>
+            </div>
+          )}
         </div>
 
-        {isMenuOpen && (
+        {!isAdmin && !isLoginPage && isMenuOpen && (
           <nav className="md:hidden" role="navigation" aria-label="Menu mobile">
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200">
               {navigation.map((item) => (

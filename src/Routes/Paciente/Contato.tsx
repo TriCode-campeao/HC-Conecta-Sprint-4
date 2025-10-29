@@ -1,4 +1,4 @@
-import BotaoVoltarHome from '../Components/BotaoVoltarHome/BotaoVoltarHome'
+import BotaoVoltarHome from '../../Components/BotaoVoltarHome/BotaoVoltarHome'
 
 export default function Contato() {
   return (
@@ -9,13 +9,8 @@ export default function Contato() {
             <BotaoVoltarHome />
           </div>
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-blue-600 mb-6">
-              Entre em contato via WhatsApp
-            </h1>
-            <p className="text-lg text-slate-700 mb-8">
-              Para dúvidas sobre teleconsultas, entre em contato conosco pelo WhatsApp. Nossa equipe está disponível para ajudar!
-            </p>
-
+            <h1 className="text-4xl font-bold text-blue-600 mb-6">Entre em contato via WhatsApp</h1>
+            <p className="text-lg text-slate-700 mb-8">Para dúvidas sobre teleconsultas, entre em contato conosco pelo WhatsApp. Nossa equipe está disponível para ajudar!</p>
             <a
               href="https://www.whatsapp.com/"
               target="_blank"
@@ -23,11 +18,7 @@ export default function Contato() {
               className="inline-flex items-center gap-3 bg-green-500 text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-green-600 transition-colors shadow-lg"
               aria-label="Abrir WhatsApp para contato"
             >
-              <img
-                src="/img/WhatsApp.png"
-                alt="WhatsApp"
-                className="w-6 h-6"
-              />
+              <img src="img/WhatsApp.png" alt="WhatsApp" className="w-6 h-6" />
               Clique aqui!
             </a>
           </div>

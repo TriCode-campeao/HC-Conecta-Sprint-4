@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import Botao from '../Components/Botao/Botao'
+import { authenticateLogin } from '../../api/auth'
+import Botao from '../../Components/Botao/Botao'
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -10,10 +11,28 @@ export default function Login() {
   const [userType, setUserType] = useState<'paciente' | 'admin'>('paciente')
   const navigate = useNavigate()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Dados do login:', formData, 'Tipo:', userType)
-    navigate('/consultas')
+    setError('')
+    setLoading(true)
+    try {
+      if (userType === 'admin') {
+        await authenticateLogin({ username: formData.username, senha: formData.senha })
+        sessionStorage.setItem('role', 'admin')
+        sessionStorage.setItem('username', formData.username)
+        navigate('/admin')
+        return
+      }
+      sessionStorage.setItem('role', 'paciente')
+      navigate('/consultas')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro inesperado')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,7 +49,7 @@ export default function Login() {
         <header className="text-center mb-8">
           <div className="mb-6">
             <img
-              src="/img/hc.png"
+              src="img/hc.png"
               alt="HC Conecta Logo"
               className="w-16 h-16 rounded-lg mx-auto"
             />
@@ -67,6 +86,12 @@ export default function Login() {
             </button>
           </div>
         </header>
+
+        {error && (
+          <div className="mb-4 text-red-600 text-sm font-medium text-center">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {userType === 'admin' && (
@@ -111,7 +136,7 @@ export default function Login() {
             size="lg"
             className="w-full"
           >
-            Entrar
+            {loading ? 'Entrando...' : 'Entrar'}
           </Botao>
         </form>
 

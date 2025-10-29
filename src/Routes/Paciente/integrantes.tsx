@@ -1,4 +1,4 @@
-import BotaoVoltarHome from '../Components/BotaoVoltarHome/BotaoVoltarHome'
+import BotaoVoltarHome from '../../Components/BotaoVoltarHome/BotaoVoltarHome'
 
 interface Integrante {
   id: number
@@ -17,7 +17,7 @@ export default function Integrantes() {
       nome: "Geovanne Coneglian Passos",
       rm: "562673",
       turma: "1TDSPY",
-      foto: "/img/geovanne.png",
+      foto: "img/geovanne.png",
       github: "https://github.com/GeovanneCP",
       linkedin: "https://www.linkedin.com/in/geovanne-coneglian-775472353/"
     },
@@ -26,7 +26,7 @@ export default function Integrantes() {
       nome: "Guilherme Soares de Almeida",
       rm: "563143",
       turma: "1TDSPY",
-      foto: "/img/guilherme.jpg",
+      foto: "img/guilherme.jpg",
       github: "https://github.com/GuuiSOares",
       linkedin: "https://www.linkedin.com/in/guilherme-soares-de-almeida"
     },
@@ -35,7 +35,7 @@ export default function Integrantes() {
       nome: "Lucas Silva Gastão Pinheiro",
       rm: "563960",
       turma: "1TDSPY",
-      foto: "/img/lucas.png",
+      foto: "img/lucas.png",
       github: "https://github.com/Lucasgastaop",
       linkedin: "https://www.linkedin.com/in/lucas-pinheiro-1a7154291/"
     }
@@ -87,7 +87,7 @@ export default function Integrantes() {
                   aria-label={`GitHub de ${integrante.nome}`}
                 >
                   <img
-                    src="/img/github.png"
+                    src="img/github.png"
                     alt="GitHub"
                     className="w-8 h-8"
                   />
@@ -100,7 +100,7 @@ export default function Integrantes() {
                   aria-label={`LinkedIn de ${integrante.nome}`}
                 >
                   <img
-                    src="/img/linkedin.png"
+                    src="img/linkedin.png"
                     alt="LinkedIn"
                     className="w-8 h-8"
                   />

@@ -4,31 +4,31 @@ export default function Home() {
 
   const cards = [
     {
-      icon: "/img/consulta.png",
+      icon: "img/consulta.png",
       title: "Minhas Consultas",
       description: "Consulte suas consultas agendadas e acesse os links das teleconsultas.",
       link: "/consultas"
     },
     {
-      icon: "/img/guia.png",
+      icon: "img/guia.png",
       title: "FAQ - Passo a passo",
       description: "Orientações rápidas: entrar na consulta, testar câmera e mais.",
       link: "/faq"
     },
     {
-      icon: "/img/equipe.png",
+      icon: "img/equipe.png",
       title: "Equipe",
       description: "Conheça quem fez o HC Conecta: Nome, RM e Turma.",
       link: "/integrantes"
     },
     {
-      icon: "/img/contato.png",
+      icon: "img/contato.png",
       title: "Contato",
       description: "Dúvidas? Fale com a equipe.",
       link: "/contato"
     },
     {
-      icon: "/img/hc.png",
+      icon: "img/hc.png",
       title: "Sobre o Projeto",
       description: "Conheça mais sobre o HC Conecta e nossa missão.",
       link: "/sobre"

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import Botao from '../Components/Botao/Botao'
-import BotaoVoltarHome from '../Components/BotaoVoltarHome/BotaoVoltarHome'
+import Botao from '../../Components/Botao/Botao'
+import BotaoVoltarHome from '../../Components/BotaoVoltarHome/BotaoVoltarHome'
 
 export default function FAQ() {
   const [feedback, setFeedback] = useState<'none' | 'yes' | 'no'>('none')
@@ -92,7 +92,7 @@ export default function FAQ() {
 
         <div className="flex justify-center mb-12">
           <img
-            src="/img/guia.png"
+            src="img/guia.png"
             alt="Guia FAQ"
             className="w-24 h-24"
           />

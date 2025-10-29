@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import Botao from '../Components/Botao/Botao'
-import BotaoVoltarHome from '../Components/BotaoVoltarHome/BotaoVoltarHome'
+import Botao from '../../Components/Botao/Botao'
+import BotaoVoltarHome from '../../Components/BotaoVoltarHome/BotaoVoltarHome'
 
 interface CpfFormData {
   cpf: string
