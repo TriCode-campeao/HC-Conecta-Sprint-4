@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import Header from '../Cabecalho/Cabecalho'
-import Footer from '../Rodape/Rodape.tsx'
+import Footer from '../Rodape/Rodape'
 
 type LayoutProps = {
   children: ReactNode

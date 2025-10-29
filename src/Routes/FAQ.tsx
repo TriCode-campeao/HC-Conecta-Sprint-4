@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import Botao from '../Components/Botao/Botao'
-import BotaoVoltarHome from '../Components/BotaoVoltarHome/BotaoVoltarHome.tsx'
+import BotaoVoltarHome from '../Components/BotaoVoltarHome/BotaoVoltarHome'
 
 export default function FAQ() {
   const [feedback, setFeedback] = useState<'none' | 'yes' | 'no'>('none')

@@ -1,4 +1,4 @@
-import BotaoVoltarHome from '../Components/BotaoVoltarHome/BotaoVoltarHome.tsx'
+import BotaoVoltarHome from '../Components/BotaoVoltarHome/BotaoVoltarHome'
 
 interface Integrante {
   id: number
