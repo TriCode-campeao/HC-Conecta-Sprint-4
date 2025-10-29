@@ -1,10 +1,15 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Botao from '../Botao/Botao'
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    navigate('/login')
+  }
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -37,6 +42,7 @@ export default function Header() {
               </Link>
               <button
                 type="button"
+                onClick={handleLogout}
                 className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
               >
                 X
