@@ -4,7 +4,7 @@ import Botao from '../Components/Botao/Botao'
 
 export default function Login() {
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     senha: ''
   })
   const [userType, setUserType] = useState<'paciente' | 'admin'>('paciente')
@@ -72,18 +72,18 @@ export default function Login() {
           {userType === 'admin' && (
             <>
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
-                  Email
+                <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-2">
+                  Username
                 </label>
                 <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
+                  type="text"
+                  id="username"
+                  name="username"
+                  value={formData.username}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  placeholder="seu@email.com"
+                  placeholder="User"
                 />
               </div>
 
