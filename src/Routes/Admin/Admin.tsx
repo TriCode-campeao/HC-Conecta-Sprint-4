@@ -10,9 +10,9 @@ export default function Admin() {
         </header>
 
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-label="Atalhos administrativos">
-          <Link to="/admin/usuarios" className="bg-white border border-gray-300 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
-            <h2 className="text-lg font-bold text-slate-900 mb-2">Usuários</h2>
-            <p className="text-slate-700 text-sm">Gerencie contas de usuários do sistema.</p>
+          <Link to="/admin/pacientes" className="bg-white border border-gray-300 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
+            <h2 className="text-lg font-bold text-blue-600 mb-2">Pacientes</h2>
+            <p className="text-slate-700 text-sm">Cadastrar e gerenciar pacientes.</p>
           </Link>
           <Link to="/admin/consultas" className="bg-white border border-gray-300 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
             <h2 className="text-lg font-bold text-slate-900 mb-2">Consultas</h2>

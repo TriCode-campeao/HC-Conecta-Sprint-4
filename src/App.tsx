@@ -7,9 +7,9 @@ import FAQDetalhe from './Routes/Paciente/FAQDetalhe'
 import Login from './Routes/Paciente/Login'
 import Consultas from './Routes/Paciente/Consultas'
 import Admin from './Routes/Admin/Admin'
-import AdminUsuarios from './Routes/Admin/Usuarios'
 import AdminConsultas from './Routes/Admin/Consultas'
 import AdminConfiguracoes from './Routes/Admin/Configuracoes'
+import AdminPacientes from './Routes/Admin/Pacientes'
 import PacienteConsultas from './Routes/Paciente/Consultas'
 import PacienteFAQ from './Routes/Paciente/FAQ'
 import PacienteContato from './Routes/Paciente/Contato'
@@ -29,7 +29,7 @@ function App() {
           <Route path="/contato" element={<PacienteContato />} />
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<Admin />} />
-          <Route path="/admin/usuarios" element={<AdminUsuarios />} />
+          <Route path="/admin/pacientes" element={<AdminPacientes />} />
           <Route path="/admin/consultas" element={<AdminConsultas />} />
           <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
         </Routes>
