@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 
 type NovoPaciente = {
@@ -27,6 +27,8 @@ export default function AdminPacientes() {
   const [contatos, setContatos] = useState<ContatoPaciente[]>([])
   const [loadingLista, setLoadingLista] = useState(false)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
+  const [deletandoId, setDeletandoId] = useState<number | null>(null)
+  const erroRef = useRef<HTMLDivElement>(null)
 
   const carregarPacientes = async () => {
     setLoadingLista(true)
@@ -60,6 +62,12 @@ export default function AdminPacientes() {
   useEffect(() => {
     carregarPacientes()
   }, [])
+
+  useEffect(() => {
+    if (erro && erroRef.current) {
+      erroRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [erro])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -161,6 +169,48 @@ export default function AdminPacientes() {
     }
   }
 
+  const handleDelete = async (idPaciente?: number) => {
+    if (!idPaciente) return
+    setLoading(true)
+    setDeletandoId(idPaciente)
+    setErro('')
+    setSucesso('')
+    try {
+      let contatoId: number | undefined
+      try {
+        const contatosResp = await fetch('https://hc-conecta-sprint-4-1.onrender.com/contatos-paciente', { headers: { 'Accept': 'application/json' } })
+        if (contatosResp.ok) {
+          const lista: any[] = await contatosResp.json()
+          const c = Array.isArray(lista) ? lista.find(x => x?.idPaciente === idPaciente) : undefined
+          contatoId = c?.idContato
+        }
+      } catch {}
+
+      if (contatoId) {
+        const delContato = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/contatos-paciente/${contatoId}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } })
+        if (!delContato.ok) {
+          const txt = await delContato.text()
+          throw new Error(txt || 'Falha ao excluir contato do paciente')
+        }
+      }
+
+      const delPaciente = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/pacientes/${idPaciente}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } })
+      if (!delPaciente.ok) {
+        const t = await delPaciente.text()
+        throw new Error(t || 'Falha ao excluir paciente')
+      }
+
+      setSucesso('Paciente excluído com sucesso')
+      await carregarPacientes()
+    } catch (err) {
+      const mensagem = err instanceof Error ? err.message : 'Erro inesperado ao excluir'
+      setErro(mensagem)
+    } finally {
+      setLoading(false)
+      setDeletandoId(null)
+    }
+  }
+
   return (
      <div className="bg-white py-8">
        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -219,8 +269,9 @@ export default function AdminPacientes() {
                                 </svg>
                               </button>
                               <button
-                                onClick={() => console.log('Excluir paciente:', p.idPaciente)}
-                                className="hover:opacity-70 transition-opacity p-2 bg-red-100 rounded text-red-600"
+                                onClick={() => handleDelete(p.idPaciente)}
+                                disabled={deletandoId === p.idPaciente}
+                                className={`transition-opacity p-2 rounded ${deletandoId === p.idPaciente ? 'opacity-60 bg-red-100 text-red-400' : 'hover:opacity-70 bg-red-100 text-red-600'}`}
                                 aria-label="Excluir paciente"
                               >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,8 +294,12 @@ export default function AdminPacientes() {
           )}
         </section>
 
-         {erro && <div className="mb-4 text-red-600 text-sm font-medium">{erro}</div>}
-         {sucesso && <div className="mb-4 text-green-600 text-sm font-medium">{sucesso}</div>}
+         {erro && <div ref={erroRef} className="mb-4 text-red-600 text-sm font-medium">{erro}</div>}
+         {sucesso && (
+           <div className={`mb-4 text-sm font-medium ${sucesso.toLowerCase().includes('exclu') ? 'text-red-600' : 'text-green-600'}`}>
+             {sucesso}
+           </div>
+         )}
 
          {mostrarFormulario && (
            <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
@@ -338,6 +393,13 @@ export default function AdminPacientes() {
              </div>
            </div>
          )}
+        {deletandoId && (
+          <div className="fixed inset-0 z-[60] flex items-center">
+            <div className="w-full py-6 bg-red-200/80 shadow-lg text-center">
+              <span className="text-red-600 text-3xl sm:text-4xl md:text-5xl font-extrabold">Excluindo...</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
