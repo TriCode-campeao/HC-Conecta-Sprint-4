@@ -98,8 +98,15 @@ export default function AdminPacientes() {
 
         <p className="text-slate-700 mb-6">Cadastrar e gerenciar pacientes.</p>
 
-        <section className="mb-8">
-          <h2 className="text-xl font-bold text-slate-900 mb-4">Pacientes Cadastrados</h2>
+            <section className="mb-8">
+               <div className="flex items-center gap-110 mb-4">
+                 <h2 className="text-xl font-bold text-slate-900">Pacientes Cadastrados</h2>
+                 <img
+                   src="/img/mais.png"
+                   alt="Adicionar"
+                   className="w-8 h-8 hover:opacity-70 transition-opacity cursor-pointer"
+                 />
+               </div>
           {loadingLista ? (
             <div className="text-slate-600">Carregando...</div>
           ) : pacientes.length > 0 ? (
@@ -112,6 +119,7 @@ export default function AdminPacientes() {
                       <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">CPF</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Data Nascimento</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Telefone</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-slate-700"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -123,6 +131,32 @@ export default function AdminPacientes() {
                           <td className="px-4 py-3 text-sm text-slate-700">{p.cpf}</td>
                           <td className="px-4 py-3 text-sm text-slate-700">{p.dataNascimento}</td>
                           <td className="px-4 py-3 text-sm text-slate-700">{contato?.telefone || 'N/A'}</td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex justify-center gap-2">
+                              <button
+                                onClick={() => console.log('Editar paciente:', p.idPaciente)}
+                                className="hover:opacity-70 transition-opacity"
+                                aria-label="Editar paciente"
+                              >
+                                <img
+                                  src="/img/lapis.png"
+                                  alt="Editar"
+                                  className="w-6 h-6"
+                                />
+                              </button>
+                              <button
+                                onClick={() => console.log('Excluir paciente:', p.idPaciente)}
+                                className="hover:opacity-70 transition-opacity"
+                                aria-label="Excluir paciente"
+                              >
+                                <img
+                                  src="/img/lixeira.png"
+                                  alt="Excluir"
+                                  className="w-6 h-6"
+                                />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       )
                     })}
