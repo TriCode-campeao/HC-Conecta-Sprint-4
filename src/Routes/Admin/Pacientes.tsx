@@ -27,6 +27,7 @@ export default function AdminPacientes() {
   const [contatos, setContatos] = useState<ContatoPaciente[]>([])
   const [loadingLista, setLoadingLista] = useState(false)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
+  const [editandoId, setEditandoId] = useState<number | null>(null)
   const [deletandoId, setDeletandoId] = useState<number | null>(null)
   const erroRef = useRef<HTMLDivElement>(null)
 
@@ -84,6 +85,23 @@ export default function AdminPacientes() {
     setErrors(prev => ({ ...prev, [name]: undefined, geral: undefined }))
   }
 
+  const handleEdit = (p: NovoPaciente) => {
+    const contato = contatos.find(c => c.idPaciente === p.idPaciente)
+    setForm({
+      idPaciente: p.idPaciente,
+      nome: p.nome || '',
+      cpf: p.cpf || '',
+      dataNascimento: p.dataNascimento || '',
+      telefone: contato?.telefone || '',
+      email: contato?.email || ''
+    })
+    setEditandoId(p.idPaciente || null)
+    setMostrarFormulario(true)
+    setErro('')
+    setSucesso('')
+    setErrors({})
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErro('')
@@ -106,49 +124,91 @@ export default function AdminPacientes() {
       }
 
       const { idPaciente, telefone, email, ...dadosPaciente } = form
-      const res = await fetch('https://hc-conecta-sprint-4-1.onrender.com/pacientes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify(dadosPaciente),
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || 'Falha ao cadastrar paciente')
-      }
 
-      let novoIdPaciente: number | undefined
-      try {
-        const body = await res.json()
-        novoIdPaciente = body?.idPaciente
-      } catch {}
+      if (editandoId && idPaciente) {
+        const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/pacientes/${idPaciente}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(dadosPaciente),
+        })
+        if (!res.ok) {
+          const text = await res.text()
+          throw new Error(text || 'Falha ao atualizar paciente')
+        }
 
-      if (!novoIdPaciente) {
-        try {
-          const busca = await fetch('https://hc-conecta-sprint-4-1.onrender.com/pacientes', { headers: { 'Accept': 'application/json' } })
-          if (busca.ok) {
-            const lista = await busca.json()
-            const encontrado = Array.isArray(lista) ? lista.find((p: any) => p?.cpf === dadosPaciente.cpf) : undefined
-            if (encontrado?.idPaciente) novoIdPaciente = encontrado.idPaciente
+        const contato = contatos.find(c => c.idPaciente === idPaciente)
+        if (contato?.idContato) {
+          const contatoRes = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/contatos-paciente/${contato.idContato}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ idPaciente, telefone, email })
+          })
+          if (!contatoRes.ok) {
+            const texto = await contatoRes.text()
+            throw new Error(texto || 'Paciente atualizado, mas falha ao atualizar contato')
           }
-        } catch {}
-      }
+        } else {
+          const contatoRes = await fetch('https://hc-conecta-sprint-4-1.onrender.com/contatos-paciente', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ idPaciente, telefone, email })
+          })
+          if (!contatoRes.ok) {
+            const texto = await contatoRes.text()
+            throw new Error(texto || 'Paciente atualizado, mas falha ao cadastrar contato')
+          }
+        }
 
-      if (novoIdPaciente) {
-        const contatoRes = await fetch('https://hc-conecta-sprint-4-1.onrender.com/contatos-paciente', {
+        setSucesso('Paciente atualizado com sucesso!')
+        setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
+        setMostrarFormulario(false)
+        setEditandoId(null)
+        carregarPacientes()
+      } else {
+        const res = await fetch('https://hc-conecta-sprint-4-1.onrender.com/pacientes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ idPaciente: novoIdPaciente, telefone, email })
+          body: JSON.stringify(dadosPaciente),
         })
-        if (!contatoRes.ok) {
-          const texto = await contatoRes.text()
-          throw new Error(texto || 'Paciente criado, mas falha ao cadastrar contato')
+        if (!res.ok) {
+          const text = await res.text()
+          throw new Error(text || 'Falha ao cadastrar paciente')
         }
-      }
 
-       setSucesso('Paciente e contato cadastrados com sucesso!')
-       setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
-       setMostrarFormulario(false)
-       carregarPacientes()
+        let novoIdPaciente: number | undefined
+        try {
+          const body = await res.json()
+          novoIdPaciente = body?.idPaciente
+        } catch {}
+
+        if (!novoIdPaciente) {
+          try {
+            const busca = await fetch('https://hc-conecta-sprint-4-1.onrender.com/pacientes', { headers: { 'Accept': 'application/json' } })
+            if (busca.ok) {
+              const lista = await busca.json()
+              const encontrado = Array.isArray(lista) ? lista.find((p: any) => p?.cpf === dadosPaciente.cpf) : undefined
+              if (encontrado?.idPaciente) novoIdPaciente = encontrado.idPaciente
+            }
+          } catch {}
+        }
+
+        if (novoIdPaciente) {
+          const contatoRes = await fetch('https://hc-conecta-sprint-4-1.onrender.com/contatos-paciente', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ idPaciente: novoIdPaciente, telefone, email })
+          })
+          if (!contatoRes.ok) {
+            const texto = await contatoRes.text()
+            throw new Error(texto || 'Paciente criado, mas falha ao cadastrar contato')
+          }
+        }
+
+         setSucesso('Paciente e contato cadastrados com sucesso!')
+         setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
+         setMostrarFormulario(false)
+         carregarPacientes()
+      }
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : 'Erro inesperado'
       
@@ -222,7 +282,16 @@ export default function AdminPacientes() {
               <div className="flex items-center gap-4 mb-4">
                 <h2 className="text-xl font-bold text-blue-600">Pacientes Cadastrados</h2>
                  <button
-                   onClick={() => setMostrarFormulario(!mostrarFormulario)}
+                   onClick={() => {
+                     setMostrarFormulario(!mostrarFormulario)
+                     if (!mostrarFormulario) {
+                       setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
+                       setEditandoId(null)
+                       setErro('')
+                       setSucesso('')
+                       setErrors({})
+                     }
+                   }}
                    className="hover:opacity-70 transition-opacity p-2 bg-green-100 rounded text-green-600"
                    aria-label="Adicionar paciente"
                  >
@@ -260,7 +329,7 @@ export default function AdminPacientes() {
                            <td className="px-6 py-4 text-center">
                             <div className="flex justify-center gap-3">
                               <button
-                                onClick={() => console.log('Editar paciente:', p.idPaciente)}
+                                onClick={() => handleEdit(p)}
                                 className="hover:opacity-70 transition-opacity p-2 bg-blue-100 rounded text-blue-600"
                                 aria-label="Editar paciente"
                               >
@@ -305,9 +374,16 @@ export default function AdminPacientes() {
            <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
              <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
                <div className="flex justify-between items-center p-6 border-b border-gray-200">
-                 <h3 className="text-lg font-semibold text-slate-900">Cadastrar Novo Paciente</h3>
+                 <h3 className="text-lg font-semibold text-slate-900">{editandoId ? 'Editar Paciente' : 'Cadastrar Novo Paciente'}</h3>
                  <button
-                   onClick={() => setMostrarFormulario(false)}
+                   onClick={() => {
+                     setMostrarFormulario(false)
+                     setEditandoId(null)
+                     setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
+                     setErro('')
+                     setSucesso('')
+                     setErrors({})
+                   }}
                    className="text-gray-400 hover:text-gray-600 transition-colors"
                    aria-label="Fechar formulário"
                  >
@@ -380,13 +456,20 @@ export default function AdminPacientes() {
                  <div className="flex gap-3 pt-4">
                    <button
                      type="button"
-                     onClick={() => setMostrarFormulario(false)}
+                     onClick={() => {
+                       setMostrarFormulario(false)
+                       setEditandoId(null)
+                       setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
+                       setErro('')
+                       setSucesso('')
+                       setErrors({})
+                     }}
                      className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                    >
                      Cancelar
                    </button>
                    <button type="submit" disabled={loading} className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-60">
-                     {loading ? 'Salvando...' : 'Cadastrar'}
+                     {loading ? 'Salvando...' : editandoId ? 'Atualizar' : 'Cadastrar'}
                    </button>
                  </div>
                </form>
