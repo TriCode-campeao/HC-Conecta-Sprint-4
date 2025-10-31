@@ -18,9 +18,9 @@ export default function Admin() {
             <h2 className="text-lg font-bold text-slate-900 mb-2">Consultas</h2>
             <p className="text-slate-700 text-sm">Acompanhe e modere teleconsultas.</p>
           </Link>
-          <Link to="/admin/configuracoes" className="bg-white border border-gray-300 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
-            <h2 className="text-lg font-bold text-slate-900 mb-2">Configurações</h2>
-            <p className="text-slate-700 text-sm">Preferências do sistema e acessos.</p>
+          <Link to="/admin/medicos" className="bg-white border border-gray-300 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
+            <h2 className="text-lg font-bold text-blue-600 mb-2">Médicos</h2>
+            <p className="text-slate-700 text-sm">Cadastrar e gerenciar médicos.</p>
           </Link>
         </section>
       </div>
