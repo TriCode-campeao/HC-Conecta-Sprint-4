@@ -26,6 +26,7 @@ type NovoMedico = {
 export default function AdminMedicos() {
   const [form, setForm] = useState<NovoMedico>({ nome: '', crm: 'CRM', especialidade: '' })
   const [especialidadesSelecionadas, setEspecialidadesSelecionadas] = useState<string[]>([])
+  const [especialidadesOriginais, setEspecialidadesOriginais] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
   const [errors, setErrors] = useState<{ crm?: string; nome?: string; especialidade?: string; geral?: string }>({})
@@ -150,6 +151,11 @@ export default function AdminMedicos() {
     setErrors(prev => ({ ...prev, [name]: undefined, geral: undefined }))
   }
 
+  const handleRemoverEspecialidade = (index: number) => {
+    setEspecialidadesSelecionadas(prev => prev.filter((_, i) => i !== index))
+    setErrors(prev => ({ ...prev, especialidade: undefined }))
+  }
+
   const handleEdit = (m: NovoMedico) => {
     const crmComPrefixo = m.crm && !m.crm.startsWith('CRM') ? `CRM${m.crm}` : (m.crm || 'CRM')
     const especialidadesLista = m.especialidades && m.especialidades.length > 0
@@ -162,6 +168,7 @@ export default function AdminMedicos() {
       especialidade: ''
     })
     setEspecialidadesSelecionadas(especialidadesLista)
+    setEspecialidadesOriginais(especialidadesLista)
     setEditandoId(m.idMedico || null)
     setMostrarFormulario(true)
     setErro('')
@@ -176,7 +183,6 @@ export default function AdminMedicos() {
     setSucesso('')
     setLoading(true)
     try {
-      
       const localErrors: { crm?: string; nome?: string; especialidade?: string } = {}
       if (!form.nome || form.nome.trim().length === 0) {
         localErrors.nome = 'Nome é obrigatório.'
@@ -219,41 +225,79 @@ export default function AdminMedicos() {
           throw new Error(text || 'Falha ao atualizar médico')
         }
 
-        if (especialidadesSelecionadas.length > 0) {
-          const errosEspecialidades: string[] = []
-          for (const nomeEspecialidade of especialidadesSelecionadas) {
-            try {
-              const nomeEspecialidadeEncoded = encodeURIComponent(nomeEspecialidade.trim())
-              const especialidadeRes = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/medicos-especialidades/medico/${idMedico}/especialidade/nome/${nomeEspecialidadeEncoded}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-              })
-              if (!especialidadeRes.ok) {
-                let mensagemErro = 'Falha ao cadastrar especialidade'
-                try {
-                  const texto = await especialidadeRes.text()
-                  if (texto && texto.trim().length > 0) {
-                    mensagemErro = texto.trim()
-                  } else {
-                    mensagemErro = `Erro ao cadastrar especialidade: ${especialidadeRes.status} ${especialidadeRes.statusText}`
-                  }
-                } catch (_) {
-                  mensagemErro = `Erro ao cadastrar especialidade: ${especialidadeRes.status} ${especialidadeRes.statusText}`
-                }
-                errosEspecialidades.push(`${nomeEspecialidade}: ${mensagemErro}`)
-              }
-            } catch (err) {
-              errosEspecialidades.push(`${nomeEspecialidade}: ${err instanceof Error ? err.message : 'Erro desconhecido'}`)
+        const especialidadesRemovidas = especialidadesOriginais.filter(esp => !especialidadesSelecionadas.includes(esp))
+        const especialidadesAdicionadas = especialidadesSelecionadas.filter(esp => !especialidadesOriginais.includes(esp))
+        
+        const errosEspecialidades: string[] = []
+        
+        for (const nomeEspecialidade of especialidadesRemovidas) {
+          try {
+            const nomeEncoded = encodeURIComponent(nomeEspecialidade.trim())
+            const urlDelete = `https://hc-conecta-sprint-4-1.onrender.com/medicos-especialidades/medico/${idMedico}/especialidade/nome/${nomeEncoded}`
+            console.log('DELETE:', urlDelete)
+            const delRes = await fetch(urlDelete, {
+              method: 'DELETE',
+              headers: { 'Accept': 'application/json' }
+            })
+            if (!delRes.ok) {
+              const texto = await delRes.text()
+              console.error('Erro DELETE:', texto)
+              errosEspecialidades.push(`Falha ao remover ${nomeEspecialidade}: ${texto}`)
+            }
+          } catch (err) {
+            console.error('Erro ao remover especialidade:', err)
+            const mensagemErro = err instanceof Error ? err.message : 'Erro desconhecido'
+            if (mensagemErro.includes('Failed to fetch')) {
+              errosEspecialidades.push(`Erro de rede ao remover ${nomeEspecialidade}. Verifique se o servidor está online.`)
+            } else {
+              errosEspecialidades.push(`Erro ao remover ${nomeEspecialidade}: ${mensagemErro}`)
             }
           }
-          if (errosEspecialidades.length > 0) {
-            throw new Error(`Médico atualizado, mas falha ao cadastrar algumas especialidades: ${errosEspecialidades.join('; ')}`)
+        }
+        
+        for (const nomeEspecialidade of especialidadesAdicionadas) {
+          try {
+            const nomeEspecialidadeEncoded = encodeURIComponent(nomeEspecialidade.trim())
+            const urlPost = `https://hc-conecta-sprint-4-1.onrender.com/medicos-especialidades/medico/${idMedico}/especialidade/nome/${nomeEspecialidadeEncoded}`
+            console.log('POST:', urlPost)
+            const especialidadeRes = await fetch(urlPost, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            })
+            if (!especialidadeRes.ok) {
+              let mensagemErro = 'Falha ao cadastrar especialidade'
+              try {
+                const texto = await especialidadeRes.text()
+                console.error('Erro POST:', texto)
+                if (texto && texto.trim().length > 0) {
+                  mensagemErro = texto.trim()
+                } else {
+                  mensagemErro = `Erro ao cadastrar especialidade: ${especialidadeRes.status} ${especialidadeRes.statusText}`
+                }
+              } catch (_) {
+                mensagemErro = `Erro ao cadastrar especialidade: ${especialidadeRes.status} ${especialidadeRes.statusText}`
+              }
+              errosEspecialidades.push(`${nomeEspecialidade}: ${mensagemErro}`)
+            }
+          } catch (err) {
+            console.error('Erro ao adicionar especialidade:', err)
+            const mensagemErro = err instanceof Error ? err.message : 'Erro desconhecido'
+            if (mensagemErro.includes('Failed to fetch')) {
+              errosEspecialidades.push(`Erro de rede ao adicionar ${nomeEspecialidade}. Verifique se o servidor está online.`)
+            } else {
+              errosEspecialidades.push(`${nomeEspecialidade}: ${mensagemErro}`)
+            }
           }
+        }
+        
+        if (errosEspecialidades.length > 0) {
+          throw new Error(`Médico atualizado, mas houve erros nas especialidades: ${errosEspecialidades.join('; ')}`)
         }
 
         setSucesso('Médico atualizado com sucesso!')
         setForm({ nome: '', crm: 'CRM', especialidade: '' })
         setEspecialidadesSelecionadas([])
+        setEspecialidadesOriginais([])
         setMostrarFormulario(false)
         setEditandoId(null)
         carregarMedicos()
@@ -348,15 +392,31 @@ export default function AdminMedicos() {
     setErro('')
     setSucesso('')
     try {
-      const delMedico = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/medicos/${idMedico}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } })
+      const urlMedico = `https://hc-conecta-sprint-4-1.onrender.com/medicos/${idMedico}`
+      console.log('DELETE médico:', urlMedico)
+      const delMedico = await fetch(urlMedico, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json' }
+      })
+      
+      console.log('Status da resposta:', delMedico.status, delMedico.statusText)
+      
       if (!delMedico.ok) {
-        const t = await delMedico.text()
-        throw new Error(t || 'Falha ao excluir médico')
+        const texto = await delMedico.text()
+        console.error('Erro ao deletar médico - Status:', delMedico.status)
+        console.error('Erro ao deletar médico - Resposta:', texto)
+        
+        if (texto.includes('Erro ao remover medico') || texto.includes('Erro ao remover médico')) {
+          throw new Error('Erro ao remover médico: Este médico já tem agendamentos cadastrados.')
+        }
+        
+        throw new Error(`Falha ao excluir médico (${delMedico.status}): ${texto}`)
       }
 
       setSucesso('Médico excluído com sucesso')
       await carregarMedicos()
     } catch (err) {
+      console.error('Erro na exclusão:', err)
       const mensagem = err instanceof Error ? err.message : 'Erro inesperado ao excluir'
       setErro(mensagem)
     } finally {
@@ -381,6 +441,7 @@ export default function AdminMedicos() {
                     if (!mostrarFormulario) {
                       setForm({ nome: '', crm: 'CRM', especialidade: '' })
                       setEspecialidadesSelecionadas([])
+                      setEspecialidadesOriginais([])
                       setEditandoId(null)
                       setErro('')
                       setSucesso('')
@@ -463,12 +524,12 @@ export default function AdminMedicos() {
           )}
         </section>
 
-         {erro && <div ref={erroRef} className="mb-4 text-red-600 text-sm font-medium">{erro}</div>}
          {sucesso && (
            <div className={`mb-4 text-sm font-medium ${sucesso.toLowerCase().includes('exclu') ? 'text-red-600' : 'text-green-600'}`}>
              {sucesso}
            </div>
          )}
+         {erro && <div ref={erroRef} className="mb-4 text-red-600 text-sm font-medium">{erro}</div>}
 
          {mostrarFormulario && (
            <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
@@ -481,6 +542,7 @@ export default function AdminMedicos() {
                      setEditandoId(null)
                      setForm({ nome: '', crm: 'CRM', especialidade: '' })
                      setEspecialidadesSelecionadas([])
+                     setEspecialidadesOriginais([])
                      setErro('')
                      setSucesso('')
                      setErrors({})
@@ -527,10 +589,7 @@ export default function AdminMedicos() {
                          >
                            <button
                              type="button"
-                             onClick={() => {
-                               setEspecialidadesSelecionadas(prev => prev.filter((_, i) => i !== index))
-                               setErrors(prev => ({ ...prev, especialidade: undefined }))
-                             }}
+                             onClick={() => handleRemoverEspecialidade(index)}
                              className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-800 mr-1 flex-shrink-0"
                              aria-label={`Remover especialidade ${esp}`}
                            >
@@ -581,6 +640,7 @@ export default function AdminMedicos() {
                        setEditandoId(null)
                        setForm({ nome: '', crm: 'CRM', especialidade: '' })
                        setEspecialidadesSelecionadas([])
+                       setEspecialidadesOriginais([])
                        setErro('')
                        setSucesso('')
                        setErrors({})
