@@ -14,9 +14,9 @@ export default function Admin() {
             <h2 className="text-lg font-bold text-blue-600 mb-2">Pacientes</h2>
             <p className="text-slate-700 text-sm">Cadastrar e gerenciar pacientes.</p>
           </Link>
-          <Link to="/admin/consultas" className="bg-white border border-gray-300 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
-            <h2 className="text-lg font-bold text-slate-900 mb-2">Consultas</h2>
-            <p className="text-slate-700 text-sm">Acompanhe e modere teleconsultas.</p>
+          <Link to="/admin/agendamentos" className="bg-white border border-gray-300 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
+            <h2 className="text-lg font-bold text-blue-600 mb-2">Agendamentos</h2>
+            <p className="text-slate-700 text-sm">Gerenciar agendamentos de consultas.</p>
           </Link>
           <Link to="/admin/medicos" className="bg-white border border-gray-300 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
             <h2 className="text-lg font-bold text-blue-600 mb-2">Médicos</h2>

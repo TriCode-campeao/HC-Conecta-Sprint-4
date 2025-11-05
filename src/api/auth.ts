@@ -27,13 +27,11 @@ export async function authenticateLogin(credentials: AuthCredentials): Promise<A
   if (!res.ok) {
     let backendMessage: string | undefined
     try {
-      // Priorize texto puro (muitos backends JAX-RS retornam String simples)
       const text = await res.text()
       if (text && text.trim().length > 0) {
         backendMessage = text.trim()
       }
     } catch (_) {}
-    // Se não veio texto, tente JSON
     if (!backendMessage) {
       try {
         const data = await res.clone().json() as unknown
