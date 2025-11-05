@@ -37,6 +37,8 @@ export default function AdminMedicos() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [editandoId, setEditandoId] = useState<number | null>(null)
   const [deletandoId, setDeletandoId] = useState<number | null>(null)
+  const [mostrarModalExcluir, setMostrarModalExcluir] = useState(false)
+  const [idParaExcluir, setIdParaExcluir] = useState<number | null>(null)
   const erroRef = useRef<HTMLDivElement>(null)
 
   const extrairNomeEspecialidade = (e: Especialidade | any): string => {
@@ -58,8 +60,8 @@ export default function AdminMedicos() {
     setLoadingLista(true)
     try {
       const medicosRes = await fetch('https://hc-conecta-sprint-4-1.onrender.com/medicos', {
-        headers: { 'Accept': 'application/json' },
-      })
+          headers: { 'Accept': 'application/json' },
+        })
       
       if (medicosRes.ok) {
         const medicosData = await medicosRes.json()
@@ -249,7 +251,7 @@ export default function AdminMedicos() {
             const mensagemErro = err instanceof Error ? err.message : 'Erro desconhecido'
             if (mensagemErro.includes('Failed to fetch')) {
               errosEspecialidades.push(`Erro de rede ao remover ${nomeEspecialidade}. Verifique se o servidor está online.`)
-            } else {
+        } else {
               errosEspecialidades.push(`Erro ao remover ${nomeEspecialidade}: ${mensagemErro}`)
             }
           }
@@ -261,8 +263,8 @@ export default function AdminMedicos() {
             const urlPost = `https://hc-conecta-sprint-4-1.onrender.com/medicos-especialidades/medico/${idMedico}/especialidade/nome/${nomeEspecialidadeEncoded}`
             console.log('POST:', urlPost)
             const especialidadeRes = await fetch(urlPost, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             })
             if (!especialidadeRes.ok) {
               let mensagemErro = 'Falha ao cadastrar especialidade'
@@ -335,8 +337,8 @@ export default function AdminMedicos() {
             try {
               const nomeEspecialidadeEncoded = encodeURIComponent(nomeEspecialidade.trim())
               const especialidadeRes = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/medicos-especialidades/medico/${novoIdMedico}/especialidade/nome/${nomeEspecialidadeEncoded}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
               })
               if (!especialidadeRes.ok) {
                 let mensagemErro = 'Falha ao cadastrar especialidade'
@@ -385,44 +387,48 @@ export default function AdminMedicos() {
     }
   }
 
-  const handleDelete = async (idMedico?: number) => {
-    if (!idMedico) return
+  const confirmarExclusao = async () => {
+    if (!idParaExcluir) return
+    
     setLoading(true)
-    setDeletandoId(idMedico)
+    setDeletandoId(idParaExcluir)
     setErro('')
     setSucesso('')
+    setMostrarModalExcluir(false)
+    
     try {
-      const urlMedico = `https://hc-conecta-sprint-4-1.onrender.com/medicos/${idMedico}`
-      console.log('DELETE médico:', urlMedico)
+      const urlMedico = `https://hc-conecta-sprint-4-1.onrender.com/medicos/${idParaExcluir}`
       const delMedico = await fetch(urlMedico, {
         method: 'DELETE',
         headers: { 'Accept': 'application/json' }
       })
       
-      console.log('Status da resposta:', delMedico.status, delMedico.statusText)
-      
       if (!delMedico.ok) {
         const texto = await delMedico.text()
-        console.error('Erro ao deletar médico - Status:', delMedico.status)
-        console.error('Erro ao deletar médico - Resposta:', texto)
         
         if (texto.includes('Erro ao remover medico') || texto.includes('Erro ao remover médico')) {
           throw new Error('Erro ao remover médico: Este médico já tem agendamentos cadastrados.')
         }
         
-        throw new Error(`Falha ao excluir médico (${delMedico.status}): ${texto}`)
+        throw new Error(texto || 'Falha ao excluir médico')
       }
 
       setSucesso('Médico excluído com sucesso')
       await carregarMedicos()
     } catch (err) {
-      console.error('Erro na exclusão:', err)
       const mensagem = err instanceof Error ? err.message : 'Erro inesperado ao excluir'
       setErro(mensagem)
     } finally {
       setLoading(false)
       setDeletandoId(null)
+      setIdParaExcluir(null)
     }
+  }
+
+  const handleDelete = (idMedico?: number) => {
+    if (!idMedico) return
+    setIdParaExcluir(idMedico)
+    setMostrarModalExcluir(true)
   }
 
   return (
@@ -436,18 +442,18 @@ export default function AdminMedicos() {
               <div className="flex items-center gap-4 mb-4">
                 <h2 className="text-xl font-bold text-blue-600">Médicos Cadastrados</h2>
                  <button
-                  onClick={() => {
-                    setMostrarFormulario(!mostrarFormulario)
-                    if (!mostrarFormulario) {
+                   onClick={() => {
+                     setMostrarFormulario(!mostrarFormulario)
+                     if (!mostrarFormulario) {
                       setForm({ nome: '', crm: 'CRM', especialidade: '' })
                       setEspecialidadesSelecionadas([])
                       setEspecialidadesOriginais([])
-                      setEditandoId(null)
-                      setErro('')
-                      setSucesso('')
-                      setErrors({})
-                    }
-                  }}
+                       setEditandoId(null)
+                       setErro('')
+                       setSucesso('')
+                       setErrors({})
+                     }
+                   }}
                    className="hover:opacity-70 transition-opacity p-2 bg-green-100 rounded text-green-600"
                    aria-label="Adicionar médico"
                  >
@@ -661,6 +667,34 @@ export default function AdminMedicos() {
           <div className="fixed inset-0 z-[60] flex items-center">
             <div className="w-full py-6 bg-red-200/80 shadow-lg text-center">
               <span className="text-red-600 text-3xl sm:text-4xl md:text-5xl font-extrabold">Excluindo...</span>
+            </div>
+          </div>
+        )}
+
+        {mostrarModalExcluir && (
+          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">Excluir Médico</h3>
+              <p className="text-slate-700 mb-6">
+                Tem certeza que deseja <span className="font-semibold text-red-600">excluir</span> este médico? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setMostrarModalExcluir(false)
+                    setIdParaExcluir(null)
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarExclusao}
+                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors"
+                >
+                  Excluir
+                </button>
+              </div>
             </div>
           </div>
         )}

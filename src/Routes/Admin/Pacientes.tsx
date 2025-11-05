@@ -29,6 +29,8 @@ export default function AdminPacientes() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [editandoId, setEditandoId] = useState<number | null>(null)
   const [deletandoId, setDeletandoId] = useState<number | null>(null)
+  const [mostrarModalExcluir, setMostrarModalExcluir] = useState(false)
+  const [idParaExcluir, setIdParaExcluir] = useState<number | null>(null)
   const erroRef = useRef<HTMLDivElement>(null)
 
   const carregarPacientes = async () => {
@@ -179,20 +181,34 @@ export default function AdminPacientes() {
         try {
           const body = await res.json()
           novoIdPaciente = body?.idPaciente
-        } catch {}
+          console.log('ID retornado pela API:', novoIdPaciente)
+        } catch (e) {
+          console.log('Erro ao parsear resposta da criação:', e)
+        }
 
         if (!novoIdPaciente) {
+          console.log('ID não retornado, buscando paciente por CPF...')
           try {
+            await new Promise(resolve => setTimeout(resolve, 1000))
             const busca = await fetch('https://hc-conecta-sprint-4-1.onrender.com/pacientes', { headers: { 'Accept': 'application/json' } })
             if (busca.ok) {
               const lista = await busca.json()
+              console.log('Lista de pacientes:', lista)
               const encontrado = Array.isArray(lista) ? lista.find((p: any) => p?.cpf === dadosPaciente.cpf) : undefined
+              console.log('Paciente encontrado:', encontrado)
               if (encontrado?.idPaciente) novoIdPaciente = encontrado.idPaciente
             }
-          } catch {}
+          } catch (e) {
+            console.log('Erro ao buscar paciente:', e)
+          }
+        }
+
+        if (!novoIdPaciente) {
+          throw new Error('Paciente criado, mas não foi possível obter o ID para cadastrar o contato. Tente editar o paciente para adicionar o contato.')
         }
 
         if (novoIdPaciente) {
+          console.log('Cadastrando contato com ID:', novoIdPaciente)
           const contatoRes = await fetch('https://hc-conecta-sprint-4-1.onrender.com/contatos-paciente', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -200,6 +216,7 @@ export default function AdminPacientes() {
           })
           if (!contatoRes.ok) {
             const texto = await contatoRes.text()
+            console.log('Erro ao cadastrar contato:', texto)
             throw new Error(texto || 'Paciente criado, mas falha ao cadastrar contato')
           }
         }
@@ -229,19 +246,22 @@ export default function AdminPacientes() {
     }
   }
 
-  const handleDelete = async (idPaciente?: number) => {
-    if (!idPaciente) return
+  const confirmarExclusao = async () => {
+    if (!idParaExcluir) return
+    
     setLoading(true)
-    setDeletandoId(idPaciente)
+    setDeletandoId(idParaExcluir)
     setErro('')
     setSucesso('')
+    setMostrarModalExcluir(false)
+    
     try {
       let contatoId: number | undefined
       try {
         const contatosResp = await fetch('https://hc-conecta-sprint-4-1.onrender.com/contatos-paciente', { headers: { 'Accept': 'application/json' } })
         if (contatosResp.ok) {
           const lista: any[] = await contatosResp.json()
-          const c = Array.isArray(lista) ? lista.find(x => x?.idPaciente === idPaciente) : undefined
+          const c = Array.isArray(lista) ? lista.find(x => x?.idPaciente === idParaExcluir) : undefined
           contatoId = c?.idContato
         }
       } catch {}
@@ -254,7 +274,7 @@ export default function AdminPacientes() {
         }
       }
 
-      const delPaciente = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/pacientes/${idPaciente}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } })
+      const delPaciente = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/pacientes/${idParaExcluir}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } })
       if (!delPaciente.ok) {
         const t = await delPaciente.text()
         throw new Error(t || 'Falha ao excluir paciente')
@@ -268,7 +288,14 @@ export default function AdminPacientes() {
     } finally {
       setLoading(false)
       setDeletandoId(null)
+      setIdParaExcluir(null)
     }
+  }
+
+  const handleDelete = (idPaciente?: number) => {
+    if (!idPaciente) return
+    setIdParaExcluir(idPaciente)
+    setMostrarModalExcluir(true)
   }
 
   return (
@@ -480,6 +507,34 @@ export default function AdminPacientes() {
           <div className="fixed inset-0 z-[60] flex items-center">
             <div className="w-full py-6 bg-red-200/80 shadow-lg text-center">
               <span className="text-red-600 text-3xl sm:text-4xl md:text-5xl font-extrabold">Excluindo...</span>
+            </div>
+          </div>
+        )}
+
+        {mostrarModalExcluir && (
+          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">Excluir Paciente</h3>
+              <p className="text-slate-700 mb-6">
+                Tem certeza que deseja <span className="font-semibold text-red-600">excluir</span> este paciente? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setMostrarModalExcluir(false)
+                    setIdParaExcluir(null)
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarExclusao}
+                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors"
+                >
+                  Excluir
+                </button>
+              </div>
             </div>
           </div>
         )}
