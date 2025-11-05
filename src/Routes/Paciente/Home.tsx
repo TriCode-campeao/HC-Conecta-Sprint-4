@@ -53,7 +53,7 @@ export default function Home() {
             <article key={index}>
               <Link
                 to={card.link}
-                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow border border-slate-200 hover:border-blue-300 group block"
+                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow border border-slate-200 hover:border-blue-300 group block h-full min-h-[150px]"
                 aria-label={`Acessar ${card.title}`}
               >
                 <div className="flex items-start gap-4">
