@@ -747,7 +747,8 @@ export default function AdminAgendamentos() {
                     setSucesso('')
                     setErrors({})
                   }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  disabled={loading}
+                  className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Fechar formulário"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -917,7 +918,8 @@ export default function AdminAgendamentos() {
                       setSucesso('')
                       setErrors({})
                     }}
-                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    disabled={loading}
+                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
                   >
                     Cancelar
                   </button>
