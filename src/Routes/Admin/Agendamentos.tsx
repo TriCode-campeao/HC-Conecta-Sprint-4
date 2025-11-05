@@ -68,15 +68,12 @@ export default function AdminAgendamentos() {
   const [loadingLista, setLoadingLista] = useState(false)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [editandoId, setEditandoId] = useState<number | null>(null)
-  const [deletandoId, setDeletandoId] = useState<number | null>(null)
   const [nomePaciente, setNomePaciente] = useState('')
   const [loadingPaciente, setLoadingPaciente] = useState(false)
   const [filtroStatus, setFiltroStatus] = useState<string>('TODOS')
   const [agendamentoSelecionado, setAgendamentoSelecionado] = useState<Agendamento | null>(null)
   const [mostrarModalReagendar, setMostrarModalReagendar] = useState(false)
   const [mostrarModalConfirmar, setMostrarModalConfirmar] = useState(false)
-  const [mostrarModalExcluir, setMostrarModalExcluir] = useState(false)
-  const [idParaExcluir, setIdParaExcluir] = useState<number | null>(null)
   const erroRef = useRef<HTMLDivElement>(null)
 
   const carregarPacientes = async () => {
@@ -138,10 +135,29 @@ export default function AdminAgendamentos() {
     return null
   }
 
-  const carregarAgendamentos = async () => {
+  const buscarPacientePorId = async (idPaciente: number) => {
+    if (!idPaciente || idPaciente === 0) return null
+    try {
+      const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/pacientes/${idPaciente}`, {
+        headers: { 'Accept': 'application/json' },
+      })
+      if (res.ok) {
+        return await res.json()
+      }
+    } catch (_) {
+      return null
+    }
+    return null
+  }
+
+  const carregarAgendamentos = async (status?: string) => {
     setLoadingLista(true)
     try {
-      const res = await fetch('https://hc-conecta-sprint-4-1.onrender.com/agendamentos', {
+      const url = status && status !== 'TODOS' 
+        ? `https://hc-conecta-sprint-4-1.onrender.com/agendamentos/status/${status}`
+        : 'https://hc-conecta-sprint-4-1.onrender.com/agendamentos'
+      
+      const res = await fetch(url, {
         headers: { 'Accept': 'application/json' },
       })
       
@@ -152,7 +168,8 @@ export default function AdminAgendamentos() {
         const agendamentosEnriquecidos = await Promise.all(
           agendamentosArray.map(async (agendamento: any) => {
             const idUnidadeParaBuscar = agendamento.idUnidadeSaude || agendamento.idUnidade
-            const [medicoData, especialidadeData, unidadeData] = await Promise.all([
+            const [pacienteData, medicoData, especialidadeData, unidadeData] = await Promise.all([
+              buscarPacientePorId(agendamento.idPaciente),
               buscarMedicoPorId(agendamento.idMedico),
               buscarEspecialidadePorId(agendamento.idEspecialidade),
               buscarUnidadePorId(idUnidadeParaBuscar)
@@ -160,6 +177,8 @@ export default function AdminAgendamentos() {
             
             return {
               ...agendamento,
+              nomePaciente: pacienteData?.nome || 'N/A',
+              cpfPaciente: pacienteData?.cpf || '',
               nomeMedico: medicoData?.nome || 'N/A',
               especialidade: especialidadeData?.nomeEspecialidade || 'N/A',
               nomeUnidade: unidadeData?.nomeUnidadeSaude || (agendamento.tipoAtendimento === 'ONLINE' ? 'Online' : 'N/A'),
@@ -281,6 +300,10 @@ export default function AdminAgendamentos() {
   }, [])
 
   useEffect(() => {
+    carregarAgendamentos(filtroStatus)
+  }, [filtroStatus])
+
+  useEffect(() => {
     if (form.especialidade) {
       filtrarMedicosPorEspecialidade(form.especialidade)
     } else {
@@ -356,11 +379,15 @@ export default function AdminAgendamentos() {
       especialidade: a.especialidade || '',
       dataHora: a.dataHora || '',
       status: a.status || 'PENDENTE',
-      tipoConsulta: a.tipoConsulta || 'PRESENCIAL'
+      tipoConsulta: a.tipoConsulta || 'PRESENCIAL',
+      idUnidade: a.idUnidade
     })
     setNomePaciente(a.nomePaciente || '')
     if (a.cpfPaciente) {
       buscarPacientePorCPF(a.cpfPaciente)
+    }
+    if (a.especialidade) {
+      filtrarMedicosPorEspecialidade(a.especialidade)
     }
     setEditandoId(a.idAgendamento || null)
     setMostrarFormulario(true)
@@ -460,7 +487,7 @@ export default function AdminAgendamentos() {
       setNomePaciente('')
       setMostrarFormulario(false)
       setEditandoId(null)
-      carregarAgendamentos()
+      carregarAgendamentos(filtroStatus)
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : 'Erro inesperado'
       setErrors(prev => ({ ...prev, geral: mensagem }))
@@ -470,55 +497,40 @@ export default function AdminAgendamentos() {
     }
   }
 
-  const confirmarExclusao = async () => {
-    if (!idParaExcluir) return
-    
+  const handleCancelarAgendamento = async (agendamento: Agendamento) => {
     setLoading(true)
-    setDeletandoId(idParaExcluir)
     setErro('')
     setSucesso('')
-    setMostrarModalExcluir(false)
     
     try {
-      const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/agendamentos/${idParaExcluir}`, {
-        method: 'DELETE',
-        headers: { 'Accept': 'application/json' }
+      const url = `https://hc-conecta-sprint-4-1.onrender.com/agendamentos/${agendamento.idAgendamento}/status?status=CANCELADO`
+      console.log('Enviando requisição para:', url)
+      
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Accept': 'application/json' },
       })
       
+      console.log('Status da resposta:', res.status)
+      
       if (!res.ok) {
-        const texto = await res.text()
-        console.log('Erro do backend:', texto)
-        
-        if (res.status === 404) {
-          if (texto.includes('Erro ao remover agendamento')) {
-            throw new Error('Não é possível excluir este agendamento. Existem registros relacionados (notificações, histórico, etc.) que impedem a exclusão.')
-          }
-          throw new Error(texto || 'Agendamento não encontrado.')
-        }
-        
-        if (res.status === 400) {
-          throw new Error(texto || 'Erro na validação do agendamento.')
-        }
-        
-        throw new Error(texto || 'Falha ao excluir agendamento')
+        const text = await res.text()
+        console.log('Erro completo do backend:', text)
+        throw new Error(text || 'Falha ao cancelar agendamento')
       }
 
-      setSucesso('Agendamento excluído com sucesso')
-      await carregarAgendamentos()
+      const resultado = await res.json()
+      console.log('Sucesso:', resultado)
+      
+      setSucesso('Agendamento cancelado com sucesso!')
+      await carregarAgendamentos(filtroStatus)
     } catch (err) {
-      const mensagem = err instanceof Error ? err.message : 'Erro inesperado ao excluir'
+      const mensagem = err instanceof Error ? err.message : 'Erro ao cancelar agendamento'
+      console.error('Erro capturado:', err)
       setErro(mensagem)
     } finally {
       setLoading(false)
-      setDeletandoId(null)
-      setIdParaExcluir(null)
     }
-  }
-
-  const handleDelete = (idAgendamento?: number) => {
-    if (!idAgendamento) return
-    setIdParaExcluir(idAgendamento)
-    setMostrarModalExcluir(true)
   }
 
   const handleAlterarStatus = async (agendamento: Agendamento, novoStatus: string) => {
@@ -547,7 +559,7 @@ export default function AdminAgendamentos() {
       }
 
       setSucesso('Status atualizado com sucesso!')
-      await carregarAgendamentos()
+      await carregarAgendamentos(filtroStatus)
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : 'Erro ao atualizar status'
       setErro(mensagem)
@@ -568,10 +580,6 @@ export default function AdminAgendamentos() {
       return dataHora
     }
   }
-
-  const agendamentosFiltrados = filtroStatus === 'TODOS' 
-    ? agendamentos 
-    : agendamentos.filter(a => a.status === filtroStatus)
 
   return (
     <div className="bg-white py-8">
@@ -624,15 +632,15 @@ export default function AdminAgendamentos() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             >
               <option value="TODOS">Todos</option>
+              <option value="CONFIRMADO">Confirmado</option>
               <option value="PENDENTE">Pendente</option>
-              <option value="REAGENDADO">Reagendado</option>
-              <option value="CONCLUIDO">Concluído</option>
+              <option value="CANCELADO">Cancelado</option>
             </select>
           </div>
           
           {loadingLista ? (
             <div className="text-slate-600">Carregando...</div>
-          ) : agendamentosFiltrados.length > 0 ? (
+          ) : agendamentos.length > 0 ? (
             <div className="bg-white border border-gray-300 rounded-lg overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-full">
@@ -649,7 +657,7 @@ export default function AdminAgendamentos() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {agendamentosFiltrados.map((a, i) => (
+                    {agendamentos.map((a, i) => (
                       <tr key={i} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 text-sm text-slate-700 font-medium">{obterNomePaciente(a.idPaciente)}</td>
                         <td className="px-4 py-3 text-sm text-slate-700">{a.nomeMedico || 'N/A'}</td>
@@ -662,42 +670,49 @@ export default function AdminAgendamentos() {
                         <td className="px-4 py-3 text-sm text-slate-700">{a.nomeUnidade || 'N/A'}</td>
                         <td className="px-2 py-3 text-center">
                           <div className="flex justify-center gap-1">
-                            {a.status === 'PENDENTE' && (
+                            {a.status !== 'CANCELADO' ? (
                               <>
+                                {a.status === 'PENDENTE' && (
+                                  <button
+                                    onClick={() => {
+                                      setAgendamentoSelecionado(a)
+                                      setMostrarModalConfirmar(true)
+                                    }}
+                                    className="hover:opacity-70 transition-opacity p-2 bg-green-100 rounded text-green-600"
+                                    aria-label="Confirmar"
+                                    title="Confirmar agendamento"
+                                  >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleEdit(a)}
+                                  className="hover:opacity-70 transition-opacity p-2 bg-blue-100 rounded text-blue-600"
+                                  aria-label="Editar agendamento"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
                                 <button
                                   onClick={() => {
                                     setAgendamentoSelecionado(a)
-                                    setMostrarModalConfirmar(true)
+                                    setMostrarModalReagendar(true)
                                   }}
-                                  className="hover:opacity-70 transition-opacity p-2 bg-green-100 rounded text-green-600"
-                                  aria-label="Confirmar"
-                                  title="Confirmar agendamento"
+                                  className="hover:opacity-70 transition-opacity p-2 bg-red-100 rounded text-red-600"
+                                  aria-label="Cancelar agendamento"
+                                  title="Cancelar agendamento"
                                 >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                   </svg>
                                 </button>
                               </>
+                            ) : (
+                              <span className="text-sm text-gray-400 italic">Sem ações disponíveis</span>
                             )}
-                            <button
-                              onClick={() => handleEdit(a)}
-                              className="hover:opacity-70 transition-opacity p-2 bg-blue-100 rounded text-blue-600"
-                              aria-label="Editar agendamento"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => handleDelete(a.idAgendamento)}
-                              disabled={deletandoId === a.idAgendamento}
-                              className={`transition-opacity p-2 rounded ${deletandoId === a.idAgendamento ? 'opacity-60 bg-red-100 text-red-400' : 'hover:opacity-70 bg-red-100 text-red-600'}`}
-                              aria-label="Excluir agendamento"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -717,7 +732,7 @@ export default function AdminAgendamentos() {
         </section>
 
         {sucesso && (
-          <div className={`mb-4 text-sm font-medium ${sucesso.toLowerCase().includes('exclu') ? 'text-red-600' : 'text-green-600'}`}>
+          <div className={`mb-4 text-sm font-medium ${sucesso.toLowerCase().includes('cancelado') ? 'text-red-600' : 'text-green-600'}`}>
             {sucesso}
           </div>
         )}
@@ -935,21 +950,13 @@ export default function AdminAgendamentos() {
             </div>
           </div>
         )}
-        
-        {deletandoId && (
-          <div className="fixed inset-0 z-[60] flex items-center">
-            <div className="w-full py-6 bg-red-200/80 shadow-lg text-center">
-              <span className="text-red-600 text-3xl sm:text-4xl md:text-5xl font-extrabold">Excluindo...</span>
-            </div>
-          </div>
-        )}
 
         {mostrarModalReagendar && agendamentoSelecionado && (
           <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">Reagendar Agendamento</h3>
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">Cancelar Agendamento</h3>
               <p className="text-slate-700 mb-6">
-                Tem certeza que deseja marcar este agendamento como <span className="font-semibold text-red-600">REAGENDADO</span>?
+                Tem certeza que deseja marcar este agendamento como <span className="font-semibold text-red-600">CANCELADO</span>?
               </p>
               <div className="flex gap-3">
                 <button
@@ -957,21 +964,23 @@ export default function AdminAgendamentos() {
                     setMostrarModalReagendar(false)
                     setAgendamentoSelecionado(null)
                   }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Cancelar
+                  Voltar
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (agendamentoSelecionado) {
-                      handleAlterarStatus(agendamentoSelecionado, 'REAGENDADO')
+                      setMostrarModalReagendar(false)
+                      setAgendamentoSelecionado(null)
+                      await handleCancelarAgendamento(agendamentoSelecionado)
                     }
-                    setMostrarModalReagendar(false)
-                    setAgendamentoSelecionado(null)
                   }}
-                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors"
+                  disabled={loading}
+                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Reagendar
+                  Cancelar Agendamento
                 </button>
               </div>
             </div>
@@ -983,7 +992,7 @@ export default function AdminAgendamentos() {
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
               <h3 className="text-lg font-semibold text-slate-900 mb-4">Confirmar Agendamento</h3>
               <p className="text-slate-700 mb-6">
-                Tem certeza que deseja marcar este agendamento como <span className="font-semibold text-green-600">CONCLUÍDO</span>?
+                Tem certeza que deseja marcar este agendamento como <span className="font-semibold text-green-600">CONFIRMADO</span>?
               </p>
               <div className="flex gap-3">
                 <button
@@ -998,7 +1007,7 @@ export default function AdminAgendamentos() {
                 <button
                   onClick={() => {
                     if (agendamentoSelecionado) {
-                      handleAlterarStatus(agendamentoSelecionado, 'CONCLUIDO')
+                      handleAlterarStatus(agendamentoSelecionado, 'CONFIRMADO')
                     }
                     setMostrarModalConfirmar(false)
                     setAgendamentoSelecionado(null)
@@ -1006,34 +1015,6 @@ export default function AdminAgendamentos() {
                   className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
                 >
                   Confirmar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {mostrarModalExcluir && (
-          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">Excluir Agendamento</h3>
-              <p className="text-slate-700 mb-6">
-                Tem certeza que deseja <span className="font-semibold text-red-600">excluir</span> este agendamento? Esta ação não pode ser desfeita.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setMostrarModalExcluir(false)
-                    setIdParaExcluir(null)
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={confirmarExclusao}
-                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors"
-                >
-                  Excluir
                 </button>
               </div>
             </div>
