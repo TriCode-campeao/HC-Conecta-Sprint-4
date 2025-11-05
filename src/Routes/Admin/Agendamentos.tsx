@@ -577,7 +577,9 @@ export default function AdminAgendamentos() {
     <div className="bg-white py-8">
       <div className="mx-auto max-w-[95%] px-4 sm:px-6 lg:px-8">
         <header className="mb-8 flex items-center justify-end">
-          <Link to="/admin" className="text-blue-600 hover:text-blue-800 hover:underline text-sm font-medium">Voltar ao painel</Link>
+          <Link to="/admin" className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:bg-blue-700 hover:shadow-lg transition-all duration-200">
+            Voltar ao Painel
+          </Link>
         </header>
 
         <section className="mb-8">
