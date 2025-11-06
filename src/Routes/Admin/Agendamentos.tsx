@@ -74,6 +74,7 @@ export default function AdminAgendamentos() {
   const [agendamentoSelecionado, setAgendamentoSelecionado] = useState<Agendamento | null>(null)
   const [mostrarModalReagendar, setMostrarModalReagendar] = useState(false)
   const [mostrarModalConfirmar, setMostrarModalConfirmar] = useState(false)
+  const [confirmandoId, setConfirmandoId] = useState<number | null>(null)
   const erroRef = useRef<HTMLDivElement>(null)
 
   const carregarPacientes = async () => {
@@ -534,6 +535,14 @@ export default function AdminAgendamentos() {
   }
 
   const handleAlterarStatus = async (agendamento: Agendamento, novoStatus: string) => {
+    setLoading(true)
+    setErro('')
+    setSucesso('')
+    
+    if (novoStatus === 'CONFIRMADO' && agendamento.idAgendamento) {
+      setConfirmandoId(agendamento.idAgendamento)
+    }
+    
     try {
       const dadosAgendamento: any = {
         idPaciente: agendamento.idPaciente,
@@ -558,11 +567,96 @@ export default function AdminAgendamentos() {
         throw new Error(text || 'Falha ao atualizar status')
       }
 
+      if (novoStatus === 'CONFIRMADO' && agendamento.idPaciente && agendamento.idMedico) {
+        try {
+          const paciente = await buscarPacientePorId(agendamento.idPaciente)
+          if (!paciente || !paciente.cpf) {
+            throw new Error('Não foi possível obter o CPF do paciente')
+          }
+
+          console.log('CPF do paciente obtido:', paciente.cpf)
+          const cpfLimpo = String(paciente.cpf).replace(/\D/g, '')
+          console.log('CPF limpo para salvar:', cpfLimpo)
+
+          const medico = await buscarMedicoPorId(agendamento.idMedico)
+          if (!medico) {
+            throw new Error('Não foi possível obter os dados do médico')
+          }
+          const dataHora = new Date(agendamento.dataHora)
+          const dataFormatada = dataHora.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          })
+          const horarioFormatado = dataHora.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+          const dataHoraISO = dataHora.toISOString()
+
+          const idUnidadeParaConsulta = (agendamento as any).idUnidadeSaude || agendamento.idUnidade || 1
+          const tipoAtendimento = agendamento.tipoConsulta || (agendamento as any).tipoAtendimento || 'PRESENCIAL'
+          const dadosConsulta = {
+            idAgendamento: agendamento.idAgendamento,
+            cpfPaciente: cpfLimpo,
+            idMedico: agendamento.idMedico,
+            idEspecialidade: agendamento.idEspecialidade,
+            idUnidade: idUnidadeParaConsulta,
+            tipoAtendimento: tipoAtendimento,
+            especialidade: agendamento.especialidade || '',
+            nomeMedico: medico.nome || agendamento.nomeMedico || '',
+            data: dataFormatada,
+            horario: horarioFormatado,
+            dataHora: dataHoraISO,
+            status: 'AGENDADA',
+            link: 'https://meet.google.com/'
+          }
+
+          console.log('Criando consulta com dados:', dadosConsulta)
+          const consultaRes = await fetch('https://hc-conecta-sprint-4-1.onrender.com/consultas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(dadosConsulta),
+          })
+
+          if (!consultaRes.ok) {
+            const text = await consultaRes.text()
+            console.error('Erro ao criar consulta:', text)
+            console.error('Status da resposta:', consultaRes.status)
+            console.error('Headers da resposta:', Object.fromEntries(consultaRes.headers.entries()))
+          } else {
+            const consultaCriada = await consultaRes.json()
+            console.log('Consulta criada com sucesso:', consultaCriada)
+            console.log('Dados completos da consulta criada:', JSON.stringify(consultaCriada, null, 2))
+            
+            setTimeout(async () => {
+              try {
+                const verificarRes = await fetch('https://hc-conecta-sprint-4-1.onrender.com/consultas', {
+                  headers: { 'Accept': 'application/json' },
+                })
+                if (verificarRes.ok) {
+                  const todasConsultas = await verificarRes.json()
+                  console.log('Verificação: Total de consultas após criação:', Array.isArray(todasConsultas) ? todasConsultas.length : 0)
+                  console.log('Verificação: Consultas encontradas:', todasConsultas)
+                }
+              } catch (err) {
+                console.error('Erro ao verificar consulta criada:', err)
+              }
+            }, 1000)
+          }
+        } catch (consultaErr) {
+          console.error('Erro ao criar consulta:', consultaErr)
+        }
+      }
+
       setSucesso('Status atualizado com sucesso!')
       await carregarAgendamentos(filtroStatus)
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : 'Erro ao atualizar status'
       setErro(mensagem)
+    } finally {
+      setLoading(false)
+      setConfirmandoId(null)
     }
   }
 
@@ -582,17 +676,17 @@ export default function AdminAgendamentos() {
   }
 
   return (
-    <div className="bg-white py-8">
-      <div className="mx-auto max-w-[95%] px-4 sm:px-6 lg:px-8">
-        <header className="mb-8 flex items-center justify-end">
-          <Link to="/admin" className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:bg-blue-700 hover:shadow-lg transition-all duration-200">
+    <div className="bg-white py-4 sm:py-6 lg:py-8 min-h-screen overflow-x-hidden">
+      <div className="mx-auto max-w-[95%] px-3 sm:px-4 md:px-6 lg:px-8 w-full box-border">
+        <header className="mb-4 sm:mb-6 lg:mb-8 flex items-center justify-end">
+          <Link to="/admin" className="bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold shadow-md hover:bg-blue-700 hover:shadow-lg transition-all duration-200 whitespace-nowrap">
             Voltar ao Painel
           </Link>
         </header>
 
-        <section className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <h2 className="text-xl font-bold text-blue-600">Agendamentos Cadastrados</h2>
+        <section className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-4">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600 flex-1">Agendamentos Cadastrados</h2>
             <button
               onClick={() => {
                 setMostrarFormulario(!mostrarFormulario)
@@ -614,22 +708,22 @@ export default function AdminAgendamentos() {
                   setErrors({})
                 }
               }}
-              className="hover:opacity-70 transition-opacity p-2 bg-green-100 rounded text-green-600"
+              className="hover:opacity-70 transition-opacity p-2 bg-green-100 rounded text-green-600 flex-shrink-0 min-h-[44px] sm:min-h-0 flex items-center justify-center"
               aria-label="Adicionar agendamento"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
             </button>
           </div>
 
-          <div className="mb-4 flex items-center gap-3">
-            <label htmlFor="filtroStatus" className="text-sm font-medium text-slate-700">Filtrar por Status:</label>
+          <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+            <label htmlFor="filtroStatus" className="text-xs sm:text-sm font-medium text-slate-700 whitespace-nowrap">Filtrar por Status:</label>
             <select 
               id="filtroStatus"
               value={filtroStatus}
               onChange={(e) => setFiltroStatus(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm w-full sm:w-auto min-h-[44px] sm:min-h-0"
             >
               <option value="TODOS">Todos</option>
               <option value="CONFIRMADO">Confirmado</option>
@@ -639,90 +733,175 @@ export default function AdminAgendamentos() {
           </div>
           
           {loadingLista ? (
-            <div className="text-slate-600">Carregando...</div>
+            <div className="text-slate-600 text-sm sm:text-base py-4">Carregando...</div>
           ) : agendamentos.length > 0 ? (
-            <div className="bg-white border border-gray-300 rounded-lg overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-blue-600 min-w-[160px]">Nome Paciente</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-blue-600 min-w-[160px]">Nome Médico</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-blue-600 min-w-[140px]">Especialidade</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-blue-600 min-w-[130px]">Data/Hora</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-blue-600 min-w-[110px]">Status</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-blue-600 min-w-[130px]">Tipo</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-blue-600 min-w-[180px]">Unidade</th>
-                      <th className="px-2 py-3 text-center text-sm font-medium text-blue-600 w-[160px]">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {agendamentos.map((a, i) => (
-                      <tr key={i} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm text-slate-700 font-medium">{obterNomePaciente(a.idPaciente)}</td>
-                        <td className="px-4 py-3 text-sm text-slate-700">{a.nomeMedico || 'N/A'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-700">{a.especialidade || 'N/A'}</td>
-                        <td className="px-4 py-3 text-sm text-slate-700">{formatarDataHora(a.dataHora)}</td>
-                        <td className="px-4 py-3">
-                          <span className="text-sm text-slate-700">{a.status}</span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-700">{a.tipoConsulta}</td>
-                        <td className="px-4 py-3 text-sm text-slate-700">{a.nomeUnidade || 'N/A'}</td>
-                        <td className="px-2 py-3 text-center">
-                          <div className="flex justify-center gap-1">
-                            {a.status !== 'CANCELADO' ? (
-                              <>
-                                {a.status === 'PENDENTE' && (
+            <>
+              <div className="hidden md:block bg-white border border-gray-300 rounded-lg overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-blue-600 min-w-[160px]">Nome Paciente</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-blue-600 min-w-[160px]">Nome Médico</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-blue-600 min-w-[140px]">Especialidade</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-blue-600 min-w-[130px]">Data/Hora</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-blue-600 min-w-[110px]">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-blue-600 min-w-[130px]">Tipo</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-blue-600 min-w-[180px]">Unidade</th>
+                        <th className="px-2 py-3 text-center text-sm font-medium text-blue-600 w-[160px]">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {agendamentos.map((a, i) => (
+                        <tr key={i} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 text-sm text-slate-700 font-medium">{obterNomePaciente(a.idPaciente)}</td>
+                          <td className="px-4 py-3 text-sm text-slate-700">{a.nomeMedico || 'N/A'}</td>
+                          <td className="px-4 py-3 text-sm text-slate-700">{a.especialidade || 'N/A'}</td>
+                          <td className="px-4 py-3 text-sm text-slate-700">{formatarDataHora(a.dataHora)}</td>
+                          <td className="px-4 py-3">
+                            <span className="text-sm text-slate-700">{a.status}</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-700">{a.tipoConsulta}</td>
+                          <td className="px-4 py-3 text-sm text-slate-700">{a.nomeUnidade || 'N/A'}</td>
+                          <td className="px-2 py-3 text-center">
+                            <div className="flex justify-center gap-1">
+                              {a.status !== 'CANCELADO' ? (
+                                <>
+                                  {a.status === 'PENDENTE' && (
+                                    <button
+                                      onClick={() => {
+                                        setAgendamentoSelecionado(a)
+                                        setMostrarModalConfirmar(true)
+                                      }}
+                                      className="hover:opacity-70 transition-opacity p-2 bg-green-100 rounded text-green-600"
+                                      aria-label="Confirmar"
+                                      title="Confirmar agendamento"
+                                    >
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleEdit(a)}
+                                    className="hover:opacity-70 transition-opacity p-2 bg-blue-100 rounded text-blue-600"
+                                    aria-label="Editar agendamento"
+                                  >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                  </button>
                                   <button
                                     onClick={() => {
                                       setAgendamentoSelecionado(a)
-                                      setMostrarModalConfirmar(true)
+                                      setMostrarModalReagendar(true)
                                     }}
-                                    className="hover:opacity-70 transition-opacity p-2 bg-green-100 rounded text-green-600"
-                                    aria-label="Confirmar"
-                                    title="Confirmar agendamento"
+                                    className="hover:opacity-70 transition-opacity p-2 bg-red-100 rounded text-red-600"
+                                    aria-label="Cancelar agendamento"
+                                    title="Cancelar agendamento"
                                   >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                   </button>
-                                )}
-                                <button
-                                  onClick={() => handleEdit(a)}
-                                  className="hover:opacity-70 transition-opacity p-2 bg-blue-100 rounded text-blue-600"
-                                  aria-label="Editar agendamento"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setAgendamentoSelecionado(a)
-                                    setMostrarModalReagendar(true)
-                                  }}
-                                  className="hover:opacity-70 transition-opacity p-2 bg-red-100 rounded text-red-600"
-                                  aria-label="Cancelar agendamento"
-                                  title="Cancelar agendamento"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                </button>
-                              </>
-                            ) : (
-                              <span className="text-sm text-gray-400 italic">Sem ações disponíveis</span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                                </>
+                              ) : (
+                                <span className="text-sm text-gray-400 italic">Sem ações disponíveis</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+
+              <div className="md:hidden space-y-3">
+                {agendamentos.map((a, i) => (
+                  <div key={i} className="bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                    <div className="space-y-2 mb-3">
+                      <div>
+                        <span className="text-xs text-slate-500 font-medium">Paciente:</span>
+                        <p className="text-sm text-slate-700 font-medium">{obterNomePaciente(a.idPaciente)}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-500 font-medium">Médico:</span>
+                        <p className="text-sm text-slate-700">{a.nomeMedico || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-500 font-medium">Especialidade:</span>
+                        <p className="text-sm text-slate-700">{a.especialidade || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-500 font-medium">Data/Hora:</span>
+                        <p className="text-sm text-slate-700">{formatarDataHora(a.dataHora)}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-500 font-medium">Status:</span>
+                        <span className="text-xs sm:text-sm text-slate-700">{a.status}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-500 font-medium">Tipo:</span>
+                        <p className="text-sm text-slate-700">{a.tipoConsulta}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-500 font-medium">Unidade:</span>
+                        <p className="text-sm text-slate-700">{a.nomeUnidade || 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div className="pt-3 border-t border-gray-200">
+                      {a.status !== 'CANCELADO' ? (
+                        <div className="flex justify-center gap-2">
+                          {a.status === 'PENDENTE' && (
+                            <button
+                              onClick={() => {
+                                setAgendamentoSelecionado(a)
+                                setMostrarModalConfirmar(true)
+                              }}
+                              className="flex-1 hover:opacity-70 transition-opacity px-3 py-2 bg-green-100 rounded text-green-600 text-sm font-medium min-h-[44px] flex items-center justify-center"
+                              aria-label="Confirmar"
+                            >
+                              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Confirmar
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleEdit(a)}
+                            className="flex-1 hover:opacity-70 transition-opacity px-3 py-2 bg-blue-100 rounded text-blue-600 text-sm font-medium min-h-[44px] flex items-center justify-center"
+                            aria-label="Editar agendamento"
+                          >
+                            <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => {
+                              setAgendamentoSelecionado(a)
+                              setMostrarModalReagendar(true)
+                            }}
+                            className="flex-1 hover:opacity-70 transition-opacity px-3 py-2 bg-red-100 rounded text-red-600 text-sm font-medium min-h-[44px] flex items-center justify-center"
+                            aria-label="Cancelar agendamento"
+                          >
+                            <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400 italic text-center">Sem ações disponíveis</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : (
-            <div className="bg-gray-50 border border-gray-300 rounded-lg p-6 text-center text-slate-600">
+            <div className="bg-gray-50 border border-gray-300 rounded-lg p-4 sm:p-6 text-center text-slate-600 text-sm sm:text-base">
               {filtroStatus === 'TODOS' 
                 ? 'Nenhum agendamento cadastrado.' 
                 : `Nenhum agendamento com status "${filtroStatus}".`
@@ -739,10 +918,10 @@ export default function AdminAgendamentos() {
         {erro && <div ref={erroRef} className="mb-4 text-red-600 text-sm font-medium">{erro}</div>}
 
         {mostrarFormulario && (
-          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white">
-                <h3 className="text-lg font-semibold text-slate-900">{editandoId ? 'Editar Agendamento' : 'Criar Novo Agendamento'}</h3>
+          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[95vh] overflow-y-auto">
+              <div className="flex justify-between items-center p-4 sm:p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+                <h3 className="text-base sm:text-lg font-semibold text-slate-900 break-words pr-2">{editandoId ? 'Editar Agendamento' : 'Criar Novo Agendamento'}</h3>
                 <button
                   onClick={() => {
                     setMostrarFormulario(false)
@@ -763,18 +942,18 @@ export default function AdminAgendamentos() {
                     setErrors({})
                   }}
                   disabled={loading}
-                  className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 min-h-[44px] sm:min-h-0 flex items-center justify-center"
                   aria-label="Fechar formulário"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
               
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
                 <div>
-                  <label htmlFor="cpfPaciente" className="block text-sm font-medium text-slate-700 mb-2">CPF do Paciente</label>
+                  <label htmlFor="cpfPaciente" className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">CPF do Paciente</label>
                   <input 
                     id="cpfPaciente" 
                     name="cpfPaciente" 
@@ -783,18 +962,18 @@ export default function AdminAgendamentos() {
                     onChange={handleChange} 
                     placeholder="000.000.000-00"
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm sm:text-base min-h-[44px] sm:min-h-0"
                   />
                   {errors.cpfPaciente && (
-                    <div className="mt-1 text-sm text-red-600">{errors.cpfPaciente}</div>
+                    <div className="mt-1 text-xs sm:text-sm text-red-600">{errors.cpfPaciente}</div>
                   )}
                   {loadingPaciente && (
-                    <div className="mt-1 text-sm text-blue-600">Buscando paciente...</div>
+                    <div className="mt-1 text-xs sm:text-sm text-blue-600">Buscando paciente...</div>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="nomePaciente" className="block text-sm font-medium text-slate-700 mb-2">Nome do Paciente</label>
+                  <label htmlFor="nomePaciente" className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Nome do Paciente</label>
                   <input 
                     id="nomePaciente" 
                     name="nomePaciente" 
@@ -803,19 +982,19 @@ export default function AdminAgendamentos() {
                     readOnly
                     disabled
                     placeholder="Digite o CPF para buscar o paciente"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed text-sm sm:text-base min-h-[44px] sm:min-h-0"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="especialidade" className="block text-sm font-medium text-slate-700 mb-2">Especialidade</label>
+                  <label htmlFor="especialidade" className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Especialidade</label>
                   <select 
                     id="especialidade" 
                     name="especialidade" 
                     value={form.especialidade} 
                     onChange={handleChange} 
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm sm:text-base min-h-[44px] sm:min-h-0"
                   >
                     <option value="">Selecione uma especialidade</option>
                     {especialidades.map((e) => (
@@ -825,12 +1004,12 @@ export default function AdminAgendamentos() {
                     ))}
                   </select>
                   {errors.especialidade && (
-                    <div className="mt-1 text-sm text-red-600">{errors.especialidade}</div>
+                    <div className="mt-1 text-xs sm:text-sm text-red-600">{errors.especialidade}</div>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="idMedico" className="block text-sm font-medium text-slate-700 mb-2">Médico</label>
+                  <label htmlFor="idMedico" className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Médico</label>
                   <select 
                     id="idMedico" 
                     name="idMedico" 
@@ -838,7 +1017,7 @@ export default function AdminAgendamentos() {
                     onChange={handleChange} 
                     required
                     disabled={!form.especialidade}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-sm sm:text-base min-h-[44px] sm:min-h-0"
                   >
                     <option value={0}>{form.especialidade ? 'Selecione um médico' : 'Selecione uma especialidade primeiro'}</option>
                     {medicosFiltrados.map((m) => (
@@ -848,12 +1027,12 @@ export default function AdminAgendamentos() {
                     ))}
                   </select>
                   {errors.idMedico && (
-                    <div className="mt-1 text-sm text-red-600">{errors.idMedico}</div>
+                    <div className="mt-1 text-xs sm:text-sm text-red-600">{errors.idMedico}</div>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="dataHora" className="block text-sm font-medium text-slate-700 mb-2">Data e Hora</label>
+                  <label htmlFor="dataHora" className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Data e Hora</label>
                   <input 
                     id="dataHora" 
                     name="dataHora" 
@@ -863,21 +1042,21 @@ export default function AdminAgendamentos() {
                     min="2000-01-01T00:00"
                     max="9999-12-31T23:59"
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm sm:text-base min-h-[44px] sm:min-h-0"
                   />
                   {errors.dataHora && (
-                    <div className="mt-1 text-sm text-red-600">{errors.dataHora}</div>
+                    <div className="mt-1 text-xs sm:text-sm text-red-600">{errors.dataHora}</div>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="tipoConsulta" className="block text-sm font-medium text-slate-700 mb-2">Tipo de Atendimento</label>
+                  <label htmlFor="tipoConsulta" className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Tipo de Atendimento</label>
                   <select 
                     id="tipoConsulta" 
                     name="tipoConsulta" 
                     value={form.tipoConsulta} 
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm sm:text-base min-h-[44px] sm:min-h-0"
                   >
                     <option value="PRESENCIAL">Presencial</option>
                     <option value="ONLINE">Online</option>
@@ -886,14 +1065,14 @@ export default function AdminAgendamentos() {
 
                 {form.tipoConsulta === 'PRESENCIAL' && (
                   <div>
-                    <label htmlFor="idUnidade" className="block text-sm font-medium text-slate-700 mb-2">Unidade de Atendimento</label>
+                    <label htmlFor="idUnidade" className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Unidade de Atendimento</label>
                     <select 
                       id="idUnidade" 
                       name="idUnidade" 
                       value={form.idUnidade || ''} 
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm sm:text-base min-h-[44px] sm:min-h-0"
                     >
                       <option value="">Selecione uma unidade</option>
                       {unidades.map((unidade) => (
@@ -903,16 +1082,16 @@ export default function AdminAgendamentos() {
                       ))}
                     </select>
                     {errors.idUnidade && (
-                      <div className="mt-1 text-sm text-red-600">{errors.idUnidade}</div>
+                      <div className="mt-1 text-xs sm:text-sm text-red-600">{errors.idUnidade}</div>
                     )}
                   </div>
                 )}
 
                 {errors.geral && (
-                  <div className="text-sm text-red-600">{errors.geral}</div>
+                  <div className="text-xs sm:text-sm text-red-600">{errors.geral}</div>
                 )}
                 
-                <div className="flex gap-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <button
                     type="button"
                     onClick={() => {
@@ -934,14 +1113,14 @@ export default function AdminAgendamentos() {
                       setErrors({})
                     }}
                     disabled={loading}
-                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white min-h-[44px] sm:min-h-0 text-sm sm:text-base"
                   >
                     Cancelar
                   </button>
                   <button 
                     type="submit" 
                     disabled={loading} 
-                    className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-60"
+                    className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-60 min-h-[44px] sm:min-h-0 text-sm sm:text-base"
                   >
                     {loading ? 'Salvando...' : editandoId ? 'Atualizar' : 'Criar'}
                   </button>
@@ -952,20 +1131,20 @@ export default function AdminAgendamentos() {
         )}
 
         {mostrarModalReagendar && agendamentoSelecionado && (
-          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">Cancelar Agendamento</h3>
-              <p className="text-slate-700 mb-6">
+          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4 break-words">Cancelar Agendamento</h3>
+              <p className="text-sm sm:text-base text-slate-700 mb-4 sm:mb-6 break-words">
                 Tem certeza que deseja marcar este agendamento como <span className="font-semibold text-red-600">CANCELADO</span>?
               </p>
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={() => {
                     setMostrarModalReagendar(false)
                     setAgendamentoSelecionado(null)
                   }}
                   disabled={loading}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2.5 sm:py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed min-h-[44px] sm:min-h-0 text-sm sm:text-base"
                 >
                   Voltar
                 </button>
@@ -978,7 +1157,7 @@ export default function AdminAgendamentos() {
                     }
                   }}
                   disabled={loading}
-                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="flex-1 bg-red-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed min-h-[44px] sm:min-h-0 text-sm sm:text-base"
                 >
                   Cancelar Agendamento
                 </button>
@@ -988,19 +1167,20 @@ export default function AdminAgendamentos() {
         )}
 
         {mostrarModalConfirmar && agendamentoSelecionado && (
-          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">Confirmar Agendamento</h3>
-              <p className="text-slate-700 mb-6">
+          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4 break-words">Confirmar Agendamento</h3>
+              <p className="text-sm sm:text-base text-slate-700 mb-4 sm:mb-6 break-words">
                 Tem certeza que deseja marcar este agendamento como <span className="font-semibold text-green-600">CONFIRMADO</span>?
               </p>
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={() => {
                     setMostrarModalConfirmar(false)
                     setAgendamentoSelecionado(null)
                   }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={loading}
+                  className="flex-1 px-4 py-2.5 sm:py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed min-h-[44px] sm:min-h-0 text-sm sm:text-base"
                 >
                   Cancelar
                 </button>
@@ -1012,11 +1192,20 @@ export default function AdminAgendamentos() {
                     setMostrarModalConfirmar(false)
                     setAgendamentoSelecionado(null)
                   }}
-                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
+                  disabled={loading}
+                  className="flex-1 bg-green-600 text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed min-h-[44px] sm:min-h-0 text-sm sm:text-base"
                 >
                   Confirmar
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {confirmandoId && (
+          <div className="fixed inset-0 z-[60] flex items-center">
+            <div className="w-full py-6 bg-green-200/80 shadow-lg text-center">
+              <span className="text-green-600 text-3xl sm:text-4xl md:text-5xl font-extrabold">Confirmando...</span>
             </div>
           </div>
         )}

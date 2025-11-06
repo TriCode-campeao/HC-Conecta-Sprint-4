@@ -38,7 +38,7 @@ export default function Header() {
     <header className="bg-white border-b border-gray-200">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-4 sm:gap-8">
             <Link to={isAdmin ? '/admin' : '/'} className="flex items-center">
               <img
                 src="/img/hc.png"
@@ -46,7 +46,7 @@ export default function Header() {
                 className="w-12 h-12 rounded-lg"
               />
             </Link>
-            <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2">
               <span className="text-sm text-slate-600 mr-2">Logado como:</span>
               <Link
                 to={isAdmin ? '/admin' : '/consultas'}
@@ -103,6 +103,29 @@ export default function Header() {
         {!isAdmin && !isLoginPage && isMenuOpen && (
           <nav className="md:hidden" role="navigation" aria-label="Menu mobile">
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200">
+              <div className="px-2 pt-3 pb-2 space-y-2 sm:px-3 border-b border-gray-200 mb-2">
+                <div className="px-3 py-2">
+                  <span className="text-sm text-slate-600">Logado como:</span>
+                </div>
+                <Link
+                  to={isAdmin ? '/admin' : '/consultas'}
+                  className="block w-full bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors text-sm font-medium text-center min-h-[44px] flex items-center justify-center"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {isAdmin ? 'Admin' : 'Paciente'}
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false)
+                    handleLogout()
+                  }}
+                  className="block w-full bg-red-600 text-white px-4 py-2.5 rounded-lg hover:bg-red-700 active:bg-red-800 transition-colors text-sm font-medium min-h-[44px]"
+                >
+                  Sair
+                </button>
+              </div>
+              
               {navigation.map((item) => (
                 <Link
                   key={item.name}
