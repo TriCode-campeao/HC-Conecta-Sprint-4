@@ -4,20 +4,26 @@ import { Link } from 'react-router-dom'
 import Botao from '../../Components/Botao/Botao'
 import BotaoVoltarHome from '../../Components/BotaoVoltarHome/BotaoVoltarHome'
 
+const API_URL = (import.meta.env as unknown as { VITE_API_URL: string }).VITE_API_URL
+
 interface CpfFormData {
   cpf: string
 }
 
 interface Consulta {
   id?: number
+  idConsulta?: number
+  idAgendamento?: number
+  idMedico?: number
+  idEspecialidade?: number
+  idUnidade?: number
   especialidade: string
   medico: string
   nomeMedico?: string
-  cpf?: string
-  cpfPaciente?: string
   data: string
   horario: string
   status: string
+  statusConsulta?: string
   link: string
   tipoAtendimento?: string
   local?: string
@@ -30,6 +36,7 @@ export default function Consultas() {
   const [loadingConsultas, setLoadingConsultas] = useState(false)
   const [tooltipConsulta, setTooltipConsulta] = useState<{ id: number | string, mensagem: string } | null>(null)
   const [atualizacaoTempo, setAtualizacaoTempo] = useState(Date.now())
+  const [consultasAtualizando, setConsultasAtualizando] = useState<Set<number>>(new Set())
 
   const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm<CpfFormData>({
     defaultValues: {
@@ -40,7 +47,7 @@ export default function Consultas() {
   const buscarMedicoPorId = async (idMedico?: number) => {
     if (!idMedico) return null
     try {
-      const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/medicos/${idMedico}`, {
+      const res = await fetch(`${API_URL}/medicos/${idMedico}`, {
         headers: { 'Accept': 'application/json' },
       })
       if (res.ok) {
@@ -55,7 +62,7 @@ export default function Consultas() {
   const buscarEspecialidadePorId = async (idEspecialidade?: number) => {
     if (!idEspecialidade) return null
     try {
-      const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/especialidades/${idEspecialidade}`, {
+      const res = await fetch(`${API_URL}/especialidades/${idEspecialidade}`, {
         headers: { 'Accept': 'application/json' },
       })
       if (res.ok) {
@@ -70,7 +77,7 @@ export default function Consultas() {
   const buscarAgendamentoPorId = async (idAgendamento?: number) => {
     if (!idAgendamento) return null
     try {
-      const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/agendamentos/${idAgendamento}`, {
+      const res = await fetch(`${API_URL}/agendamentos/${idAgendamento}`, {
         headers: { 'Accept': 'application/json' },
       })
       if (res.ok) {
@@ -85,7 +92,7 @@ export default function Consultas() {
   const buscarUnidadePorId = async (idUnidade?: number) => {
     if (!idUnidade) return null
     try {
-      const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/unidades-saude/${idUnidade}`, {
+      const res = await fetch(`${API_URL}/unidades-saude/${idUnidade}`, {
         headers: { 'Accept': 'application/json' },
       })
       if (res.ok) {
@@ -103,7 +110,7 @@ export default function Consultas() {
     setLoadingConsultas(true)
     try {
       const cpfLimpo = cpf.replace(/\D/g, '')
-      const url = `https://hc-conecta-sprint-4-1.onrender.com/consultas/paciente/${cpfLimpo}`
+      const url = `${API_URL}/consultas/paciente/${cpfLimpo}`
       
       const res = await fetch(url, {
         headers: { 'Accept': 'application/json' },
@@ -227,6 +234,11 @@ export default function Consultas() {
             
             return {
               id: consulta.idConsulta || consulta.id,
+              idConsulta: consulta.idConsulta || consulta.id,
+              idAgendamento: idAgendamento,
+              idMedico: idMedico,
+              idEspecialidade: idEspecialidade,
+              idUnidade: idUnidade,
               especialidade: especialidade || 'Especialidade não informada',
               medico: nomeMedico,
               nomeMedico: nomeMedico,
@@ -246,7 +258,16 @@ export default function Consultas() {
           return status !== 'CANCELADO' && status !== 'CANCELADA'
         })
         
-        setConsultas(consultasFiltradasPorStatus)
+        setConsultas(prev => {
+          const consultasAtualizadas = consultasFiltradasPorStatus.map((novaConsulta: any) => {
+            const consultaExistente = prev.find(c => c.idConsulta === novaConsulta.idConsulta)
+            if (consultaExistente && consultaExistente.statusConsulta === 'REALIZADA') {
+              return consultaExistente
+            }
+            return novaConsulta
+          })
+          return consultasAtualizadas
+        })
       } else {
         setConsultas([])
       }
@@ -257,56 +278,60 @@ export default function Consultas() {
     }
   }, [])
 
-  useEffect(() => {
-    if (cpfSalvo) {
-      carregarConsultas(cpfSalvo)
-    } else {
-      setConsultas([])
-    }
-  }, [cpfSalvo, carregarConsultas])
+  const obterDataHoraBrasilia = () => {
+    const agora = new Date()
+    const formatoBrasilia = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    })
+    
+    const partes = formatoBrasilia.formatToParts(agora)
+    const ano = parseInt(partes.find(p => p.type === 'year')?.value || '0')
+    const mes = parseInt(partes.find(p => p.type === 'month')?.value || '0') - 1
+    const dia = parseInt(partes.find(p => p.type === 'day')?.value || '0')
+    const hora = parseInt(partes.find(p => p.type === 'hour')?.value || '0')
+    const minuto = parseInt(partes.find(p => p.type === 'minute')?.value || '0')
+    const segundo = parseInt(partes.find(p => p.type === 'second')?.value || '0')
+    
+    return new Date(ano, mes, dia, hora, minuto, segundo)
+  }
 
-  useEffect(() => {
-    if (consultas.length === 0) return
-    
-    const interval = setInterval(() => {
-      setAtualizacaoTempo(Date.now())
-    }, 60000)
-    
-    const handleScroll = () => {
-      setTooltipConsulta(null)
-    }
-    
-    window.addEventListener('scroll', handleScroll)
-    
-    return () => {
-      clearInterval(interval)
-      window.removeEventListener('scroll', handleScroll)
-    }
-  }, [consultas])
+  const criarDataHoraBrasilia = (ano: number, mes: number, dia: number, hora: number, minuto: number) => {
+    return new Date(ano, mes, dia, hora, minuto, 0)
+  }
 
   const verificarAcessoConsulta = (data: string, horario: string) => {
     try {
-      const [dia, mes, ano] = data.split('/')
-      const [hora, minuto] = horario.split(':')
+      const [diaStr, mesStr, anoStr] = data.split('/')
+      const [horaStr, minutoStr] = horario.split(':')
       
-      const dataHoraConsulta = new Date(
-        parseInt(ano),
-        parseInt(mes) - 1,
-        parseInt(dia),
-        parseInt(hora),
-        parseInt(minuto)
-      )
+      const ano = parseInt(anoStr)
+      const mes = parseInt(mesStr) - 1
+      const dia = parseInt(diaStr)
+      const hora = parseInt(horaStr)
+      const minuto = parseInt(minutoStr)
       
-      const agora = new Date()
-      const quinzeMinutosAntes = new Date(dataHoraConsulta.getTime() - 15 * 60 * 1000)
-      const cincoMinutosDepois = new Date(dataHoraConsulta.getTime() + 5 * 60 * 1000)
+      const dataHoraConsulta = criarDataHoraBrasilia(ano, mes, dia, hora, minuto)
+      const agora = obterDataHoraBrasilia()
       
-      if (agora < quinzeMinutosAntes) {
+      const quinzeMinutosAntes = new Date(dataHoraConsulta)
+      quinzeMinutosAntes.setMinutes(quinzeMinutosAntes.getMinutes() - 15)
+      
+      const cincoMinutosDepois = new Date(dataHoraConsulta)
+      cincoMinutosDepois.setMinutes(cincoMinutosDepois.getMinutes() + 5)
+      
+      if (agora.getTime() < quinzeMinutosAntes.getTime()) {
         return {
           acessivel: false,
           mensagem: 'Você só poderá acessar a chamada 15 minutos antes do horário agendado.'
         }
-      } else if (agora >= quinzeMinutosAntes && agora <= cincoMinutosDepois) {
+      } else if (agora.getTime() >= quinzeMinutosAntes.getTime() && agora.getTime() <= cincoMinutosDepois.getTime()) {
         return {
           acessivel: true,
           mensagem: ''
@@ -324,6 +349,127 @@ export default function Consultas() {
       }
     }
   }
+
+  const atualizarStatusConsulta = useCallback(async (consulta: Consulta) => {
+    if (!consulta.idConsulta) return
+    if (consultasAtualizando.has(consulta.idConsulta)) return
+    
+    const statusUpper = (consulta.statusConsulta || consulta.status?.toUpperCase() || '')
+    if (statusUpper === 'REALIZADA') return
+    
+    setConsultasAtualizando(prev => new Set(prev).add(consulta.idConsulta!))
+    
+    const statusOriginal = consulta.status
+    const statusConsultaOriginal = consulta.statusConsulta
+    
+    setConsultas(prev => prev.map(c => {
+      if (c.idConsulta === consulta.idConsulta) {
+        return { ...c, status: 'REALIZADA', statusConsulta: 'REALIZADA' }
+      }
+      return c
+    }))
+    
+    try {
+      const dadosConsulta = {
+        idConsulta: consulta.idConsulta,
+        idAgendamento: consulta.idAgendamento,
+        idMedico: consulta.idMedico,
+        idEspecialidade: consulta.idEspecialidade,
+        idUnidade: consulta.idUnidade,
+        status: 'REALIZADA',
+        link: consulta.link
+      }
+
+      const res = await fetch(`${API_URL}/consultas/${consulta.idConsulta}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(dadosConsulta),
+      })
+
+      if (!res.ok) {
+        setConsultas(prev => prev.map(c => {
+          if (c.idConsulta === consulta.idConsulta) {
+            return { ...c, status: statusOriginal, statusConsulta: statusConsultaOriginal }
+          }
+          return c
+        }))
+      }
+    } catch (_) {
+      setConsultas(prev => prev.map(c => {
+        if (c.idConsulta === consulta.idConsulta) {
+          return { ...c, status: statusOriginal, statusConsulta: statusConsultaOriginal }
+        }
+        return c
+      }))
+    } finally {
+      setConsultasAtualizando(prev => {
+        const novo = new Set(prev)
+        novo.delete(consulta.idConsulta!)
+        return novo
+      })
+    }
+  }, [consultasAtualizando])
+
+  const verificarEAtualizarConsultasRealizadas = useCallback(() => {
+    consultas.forEach((consulta) => {
+      if (!consulta.idConsulta) return
+      const statusUpper = (consulta.statusConsulta || consulta.status?.toUpperCase() || '')
+      if (statusUpper === 'REALIZADA') return
+      if (consultasAtualizando.has(consulta.idConsulta)) return
+      
+      try {
+        const [diaStr, mesStr, anoStr] = consulta.data.split('/')
+        const [horaStr, minutoStr] = consulta.horario.split(':')
+        
+        const ano = parseInt(anoStr)
+        const mes = parseInt(mesStr) - 1
+        const dia = parseInt(diaStr)
+        const hora = parseInt(horaStr)
+        const minuto = parseInt(minutoStr)
+        
+        const dataHoraConsulta = criarDataHoraBrasilia(ano, mes, dia, hora, minuto)
+        const agora = obterDataHoraBrasilia()
+        
+        const cincoMinutosDepois = new Date(dataHoraConsulta)
+        cincoMinutosDepois.setMinutes(cincoMinutosDepois.getMinutes() + 5)
+        
+        if (agora.getTime() > cincoMinutosDepois.getTime()) {
+          atualizarStatusConsulta(consulta)
+        }
+      } catch (_) {
+      }
+    })
+  }, [consultas, atualizarStatusConsulta, consultasAtualizando])
+
+  useEffect(() => {
+    if (cpfSalvo) {
+      carregarConsultas(cpfSalvo)
+    } else {
+      setConsultas([])
+    }
+  }, [cpfSalvo, carregarConsultas])
+
+  useEffect(() => {
+    if (consultas.length === 0) return
+    
+    verificarEAtualizarConsultasRealizadas()
+    
+    const interval = setInterval(() => {
+      setAtualizacaoTempo(Date.now())
+      verificarEAtualizarConsultasRealizadas()
+    }, 5000)
+    
+    const handleScroll = () => {
+      setTooltipConsulta(null)
+    }
+    
+    window.addEventListener('scroll', handleScroll)
+    
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [consultas, verificarEAtualizarConsultasRealizadas])
 
 
   const validarCPF = (cpf: string): boolean => {
@@ -499,49 +645,55 @@ export default function Consultas() {
                 </div>
               ) : consultas.length > 0 ? (
                 <div className="space-y-3 sm:space-y-4 w-full" role="list" aria-label="Lista de consultas agendadas">
-                  {consultas.map((consulta, index) => (
-                    <article key={consulta.id || `consulta-${index}`} className="bg-gray-100 border border-gray-300 rounded-lg p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow w-full box-border overflow-visible" role="listitem">
-                      <div className="flex flex-col mb-4 gap-3 w-full">
-                        <div className="w-full">
-                          <h3 className="text-base sm:text-lg md:text-xl font-bold text-blue-600 mb-3 break-words">
-                            {consulta.especialidade}
-                          </h3>
-                          <div className="space-y-2 mb-3">
-                            <p className="text-slate-700 text-sm break-words">
-                              <strong className="font-semibold">Médico:</strong> {consulta.medico}
-                            </p>
-                            <p className="text-slate-700 text-sm break-words">
-                              <strong className="font-semibold">Tipo de Atendimento:</strong> {consulta.tipoAtendimento === 'ONLINE' ? 'Online' : 'Presencial'}
-                            </p>
-                            <p className="text-slate-700 text-sm break-words">
-                              <strong className="font-semibold">Local:</strong> {consulta.local}
-                            </p>
+                  {consultas.map((consulta, index) => {
+                    atualizacaoTempo
+                    const acesso = consulta.tipoAtendimento === 'ONLINE' ? verificarAcessoConsulta(consulta.data, consulta.horario) : null
+                    const consultaId = consulta.id || `consulta-${index}`
+                    const mostrarTooltip = tooltipConsulta?.id === consultaId
+                    
+                    return (
+                      <article key={consulta.id || `consulta-${index}`} className="bg-gray-100 border border-gray-300 rounded-lg p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow w-full box-border overflow-visible" role="listitem">
+                        <div className="flex flex-col mb-4 gap-3 w-full">
+                          <div className="w-full">
+                            <h3 className="text-base sm:text-lg md:text-xl font-bold text-blue-600 mb-3 break-words">
+                              {consulta.especialidade}
+                            </h3>
+                            <div className="space-y-2 mb-3">
+                              <p className="text-slate-700 text-sm break-words">
+                                <strong className="font-semibold">Médico:</strong> {consulta.medico}
+                              </p>
+                              <p className="text-slate-700 text-sm break-words">
+                                <strong className="font-semibold">Tipo de Atendimento:</strong> {consulta.tipoAtendimento === 'ONLINE' ? 'Online' : 'Presencial'}
+                              </p>
+                              <p className="text-slate-700 text-sm break-words">
+                                <strong className="font-semibold">Local:</strong> {consulta.local}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-row items-center justify-between gap-3 pt-3 border-t border-gray-300">
+                            <div className="flex flex-col gap-1">
+                              <p className="text-slate-700 text-sm">
+                                <strong className="font-semibold">Data:</strong> {consulta.data}
+                              </p>
+                              <p className="text-slate-700 text-sm">
+                                <strong className="font-semibold">Horário:</strong> {consulta.horario}
+                              </p>
+                            </div>
+                            <span className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap flex-shrink-0 ${(() => {
+                              const statusUpper = (consulta.statusConsulta || consulta.status?.toUpperCase() || '')
+                              if (statusUpper === 'AGENDADA' || statusUpper === 'REAGENDADA') {
+                                return 'bg-yellow-100 text-yellow-800'
+                              } else if (statusUpper === 'REALIZADA') {
+                                return 'bg-green-100 text-green-800'
+                              } else {
+                                return 'bg-gray-100 text-gray-800'
+                              }
+                            })()}`}>
+                              {consulta.statusConsulta || consulta.status}
+                            </span>
                           </div>
                         </div>
-                        <div className="flex flex-row items-center justify-between gap-3 pt-3 border-t border-gray-300">
-                          <div className="flex flex-col gap-1">
-                            <p className="text-slate-700 text-sm">
-                              <strong className="font-semibold">Data:</strong> {consulta.data}
-                            </p>
-                            <p className="text-slate-700 text-sm">
-                              <strong className="font-semibold">Horário:</strong> {consulta.horario}
-                            </p>
-                          </div>
-                          <span className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap flex-shrink-0 ${consulta.status === 'Agendada' || consulta.status === 'AGENDADA'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-green-100 text-green-800'
-                            }`}>
-                            {consulta.status}
-                          </span>
-                        </div>
-                      </div>
-                      {consulta.tipoAtendimento === 'ONLINE' && (() => {
-                        atualizacaoTempo
-                        const acesso = verificarAcessoConsulta(consulta.data, consulta.horario)
-                        const consultaId = consulta.id || `consulta-${index}`
-                        const mostrarTooltip = tooltipConsulta?.id === consultaId
-                        
-                        return (
+                        {consulta.tipoAtendimento === 'ONLINE' && acesso && (
                           <div className="w-full mt-3 pt-3 border-t border-gray-300">
                             {acesso.acessivel ? (
                               <a
@@ -583,10 +735,10 @@ export default function Consultas() {
                               </div>
                             )}
                           </div>
-                        )
-                      })()}
-                    </article>
-                  ))}
+                        )}
+                      </article>
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="bg-gray-100 border border-gray-300 rounded-lg p-6 sm:p-8 text-center">
@@ -619,7 +771,7 @@ export default function Consultas() {
             </h3>
           </div>
           <ul className="space-y-2 text-sm text-slate-700 list-disc list-inside break-words mb-4 sm:mb-6 pl-2" role="list">
-            <li className="break-words"><strong>Consultas Online:</strong> Acesse o link da consulta 5 minutos antes do horário agendado</li>
+            <li className="break-words"><strong>Consultas Online:</strong> Acesse o link da consulta 15 minutos antes do horário agendado</li>
             <li className="break-words"><strong>Consultas Online:</strong> Certifique-se de ter uma conexão estável com a internet</li>
             <li className="break-words"><strong>Consultas Online:</strong> Teste sua câmera e microfone antes da consulta</li>
             <li className="break-words"><strong>Consultas Presenciais:</strong> Chegue com pelo menos 15 minutos de antecedência</li>

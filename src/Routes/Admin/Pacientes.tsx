@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 
+const API_URL = (import.meta.env as unknown as { VITE_API_URL: string }).VITE_API_URL
+
 type NovoPaciente = {
   idPaciente?: number
   nome: string
@@ -37,10 +39,10 @@ export default function AdminPacientes() {
     setLoadingLista(true)
     try {
       const [pacientesRes, contatosRes] = await Promise.all([
-        fetch('https://hc-conecta-sprint-4-1.onrender.com/pacientes', {
+        fetch(`${API_URL}/pacientes`, {
           headers: { 'Accept': 'application/json' },
         }),
-        fetch('https://hc-conecta-sprint-4-1.onrender.com/contatos-paciente', {
+        fetch(`${API_URL}/contatos-paciente`, {
           headers: { 'Accept': 'application/json' },
         })
       ])
@@ -128,7 +130,7 @@ export default function AdminPacientes() {
       const { idPaciente, telefone, email, ...dadosPaciente } = form
 
       if (editandoId && idPaciente) {
-        const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/pacientes/${idPaciente}`, {
+        const res = await fetch(`${API_URL}/pacientes/${idPaciente}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify(dadosPaciente),
@@ -140,7 +142,7 @@ export default function AdminPacientes() {
 
         const contato = contatos.find(c => c.idPaciente === idPaciente)
         if (contato?.idContato) {
-          const contatoRes = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/contatos-paciente/${contato.idContato}`, {
+          const contatoRes = await fetch(`${API_URL}/contatos-paciente/${contato.idContato}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({ idPaciente, telefone, email })
@@ -150,7 +152,7 @@ export default function AdminPacientes() {
             throw new Error(texto || 'Paciente atualizado, mas falha ao atualizar contato')
           }
         } else {
-          const contatoRes = await fetch('https://hc-conecta-sprint-4-1.onrender.com/contatos-paciente', {
+          const contatoRes = await fetch('${API_URL}/contatos-paciente', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({ idPaciente, telefone, email })
@@ -167,7 +169,7 @@ export default function AdminPacientes() {
         setEditandoId(null)
         carregarPacientes()
       } else {
-        const res = await fetch('https://hc-conecta-sprint-4-1.onrender.com/pacientes', {
+        const res = await fetch('${API_URL}/pacientes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify(dadosPaciente),
@@ -187,7 +189,7 @@ export default function AdminPacientes() {
         if (!novoIdPaciente) {
           try {
             await new Promise(resolve => setTimeout(resolve, 1000))
-            const busca = await fetch('https://hc-conecta-sprint-4-1.onrender.com/pacientes', { headers: { 'Accept': 'application/json' } })
+            const busca = await fetch('${API_URL}/pacientes', { headers: { 'Accept': 'application/json' } })
             if (busca.ok) {
               const lista = await busca.json()
               const encontrado = Array.isArray(lista) ? lista.find((p: any) => p?.cpf === dadosPaciente.cpf) : undefined
@@ -202,7 +204,7 @@ export default function AdminPacientes() {
         }
 
         if (novoIdPaciente) {
-          const contatoRes = await fetch('https://hc-conecta-sprint-4-1.onrender.com/contatos-paciente', {
+          const contatoRes = await fetch('${API_URL}/contatos-paciente', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({ idPaciente: novoIdPaciente, telefone, email })
@@ -250,7 +252,7 @@ export default function AdminPacientes() {
     try {
       let contatoId: number | undefined
       try {
-        const contatosResp = await fetch('https://hc-conecta-sprint-4-1.onrender.com/contatos-paciente', { headers: { 'Accept': 'application/json' } })
+        const contatosResp = await fetch('${API_URL}/contatos-paciente', { headers: { 'Accept': 'application/json' } })
         if (contatosResp.ok) {
           const lista: any[] = await contatosResp.json()
           const c = Array.isArray(lista) ? lista.find(x => x?.idPaciente === idParaExcluir) : undefined
@@ -259,14 +261,14 @@ export default function AdminPacientes() {
       } catch {}
 
       if (contatoId) {
-        const delContato = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/contatos-paciente/${contatoId}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } })
+        const delContato = await fetch(`${API_URL}/contatos-paciente/${contatoId}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } })
         if (!delContato.ok) {
           const txt = await delContato.text()
           throw new Error(txt || 'Falha ao excluir contato do paciente')
         }
       }
 
-      const delPaciente = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/pacientes/${idParaExcluir}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } })
+      const delPaciente = await fetch(`${API_URL}/pacientes/${idParaExcluir}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } })
       if (!delPaciente.ok) {
         const t = await delPaciente.text()
         throw new Error(t || 'Falha ao excluir paciente')

@@ -5,7 +5,8 @@ export type AuthCredentials = {
 
 export type AuthResponse = unknown
 
-const AUTH_URL = 'https://hc-conecta-sprint-4-1.onrender.com/logins/autenticar'
+const API_URL = (import.meta.env as unknown as { VITE_API_URL: string }).VITE_API_URL
+const AUTH_URL = `${API_URL}/logins/autenticar`
 
 export async function authenticateLogin(credentials: AuthCredentials): Promise<AuthResponse> {
   const url = new URL(AUTH_URL)
@@ -53,5 +54,4 @@ export async function authenticateLogin(credentials: AuthCredentials): Promise<A
 
   return res.json()
 }
-
 

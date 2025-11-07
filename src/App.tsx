@@ -10,7 +10,6 @@ import Admin from './Routes/Admin/Admin'
 import AdminAgendamentos from './Routes/Admin/Agendamentos'
 import AdminMedicos from './Routes/Admin/Medicos'
 import AdminPacientes from './Routes/Admin/Pacientes'
-import PacienteConsultas from './Routes/Paciente/Consultas'
 import PacienteFAQ from './Routes/Paciente/FAQ'
 import PacienteContato from './Routes/Paciente/Contato'
 
@@ -23,7 +22,7 @@ function App() {
           <Route path="/integrantes" element={<Integrantes />} />
           <Route path="/sobre" element={<Sobre />} />
           <Route path="/consultas" element={<Consultas />} />
-          <Route path="/paciente/consultas" element={<PacienteConsultas />} />
+          <Route path="/paciente/consultas" element={<Consultas />} />
           <Route path="/faq" element={<PacienteFAQ />} />
           <Route path="/faq/:slug" element={<FAQDetalhe />} />
           <Route path="/contato" element={<PacienteContato />} />

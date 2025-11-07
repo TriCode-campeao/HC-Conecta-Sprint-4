@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 
+const API_URL = (import.meta.env as unknown as { VITE_API_URL: string }).VITE_API_URL
+
 type Especialidade = {
   idEspecialidade?: number
   nome?: string
@@ -59,7 +61,7 @@ export default function AdminMedicos() {
   const carregarMedicos = async () => {
     setLoadingLista(true)
     try {
-      const medicosRes = await fetch('https://hc-conecta-sprint-4-1.onrender.com/medicos', {
+      const medicosRes = await fetch(`${API_URL}/medicos`, {
           headers: { 'Accept': 'application/json' },
         })
       
@@ -71,7 +73,7 @@ export default function AdminMedicos() {
           medicosLista.map(async (m: any) => {
             let especialidades: Especialidade[] = []
             try {
-              const especialidadesRes = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/medicos-especialidades/medico/${m.idMedico}`, {
+              const especialidadesRes = await fetch(`${API_URL}/medicos-especialidades/medico/${m.idMedico}`, {
                 headers: { 'Accept': 'application/json' },
               })
               if (especialidadesRes.ok) {
@@ -103,7 +105,7 @@ export default function AdminMedicos() {
 
   const carregarEspecialidades = async () => {
     try {
-      const res = await fetch('https://hc-conecta-sprint-4-1.onrender.com/especialidades', {
+      const res = await fetch(`${API_URL}/especialidades`, {
         headers: { 'Accept': 'application/json' },
       })
       if (res.ok) {
@@ -214,7 +216,7 @@ export default function AdminMedicos() {
       }
 
       if (editandoId && idMedico) {
-        const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/medicos/${idMedico}`, {
+        const res = await fetch(`${API_URL}/medicos/${idMedico}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify(dadosMedico),
@@ -232,7 +234,7 @@ export default function AdminMedicos() {
         for (const nomeEspecialidade of especialidadesRemovidas) {
           try {
             const nomeEncoded = encodeURIComponent(nomeEspecialidade.trim())
-            const urlDelete = `https://hc-conecta-sprint-4-1.onrender.com/medicos-especialidades/medico/${idMedico}/especialidade/nome/${nomeEncoded}`
+            const urlDelete = `${API_URL}/medicos-especialidades/medico/${idMedico}/especialidade/nome/${nomeEncoded}`
             const delRes = await fetch(urlDelete, {
               method: 'DELETE',
               headers: { 'Accept': 'application/json' }
@@ -254,7 +256,7 @@ export default function AdminMedicos() {
         for (const nomeEspecialidade of especialidadesAdicionadas) {
           try {
             const nomeEspecialidadeEncoded = encodeURIComponent(nomeEspecialidade.trim())
-            const urlPost = `https://hc-conecta-sprint-4-1.onrender.com/medicos-especialidades/medico/${idMedico}/especialidade/nome/${nomeEspecialidadeEncoded}`
+            const urlPost = `${API_URL}/medicos-especialidades/medico/${idMedico}/especialidade/nome/${nomeEspecialidadeEncoded}`
             const especialidadeRes = await fetch(urlPost, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -295,7 +297,7 @@ export default function AdminMedicos() {
         setEditandoId(null)
         carregarMedicos()
       } else {
-        const res = await fetch('https://hc-conecta-sprint-4-1.onrender.com/medicos', {
+        const res = await fetch('${API_URL}/medicos', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify(dadosMedico),
@@ -313,7 +315,7 @@ export default function AdminMedicos() {
 
         if (!novoIdMedico) {
           try {
-            const busca = await fetch('https://hc-conecta-sprint-4-1.onrender.com/medicos', { headers: { 'Accept': 'application/json' } })
+            const busca = await fetch('${API_URL}/medicos', { headers: { 'Accept': 'application/json' } })
             if (busca.ok) {
               const lista = await busca.json()
               const encontrado = Array.isArray(lista) ? lista.find((m: any) => m?.crmMedico === form.crm) : undefined
@@ -327,7 +329,7 @@ export default function AdminMedicos() {
           for (const nomeEspecialidade of especialidadesSelecionadas) {
             try {
               const nomeEspecialidadeEncoded = encodeURIComponent(nomeEspecialidade.trim())
-              const especialidadeRes = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/medicos-especialidades/medico/${novoIdMedico}/especialidade/nome/${nomeEspecialidadeEncoded}`, {
+              const especialidadeRes = await fetch(`${API_URL}/medicos-especialidades/medico/${novoIdMedico}/especialidade/nome/${nomeEspecialidadeEncoded}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
               })
@@ -388,7 +390,7 @@ export default function AdminMedicos() {
     setMostrarModalExcluir(false)
     
     try {
-      const urlMedico = `https://hc-conecta-sprint-4-1.onrender.com/medicos/${idParaExcluir}`
+      const urlMedico = `${API_URL}/medicos/${idParaExcluir}`
       const delMedico = await fetch(urlMedico, {
         method: 'DELETE',
         headers: { 'Accept': 'application/json' }

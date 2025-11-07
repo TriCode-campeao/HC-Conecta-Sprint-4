@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 
+const API_URL = (import.meta.env as unknown as { VITE_API_URL: string }).VITE_API_URL
+
 type Medico = {
   idMedico: number
   nome: string
@@ -83,7 +85,7 @@ export default function AdminAgendamentos() {
 
   const carregarPacientes = async () => {
     try {
-      const res = await fetch('https://hc-conecta-sprint-4-1.onrender.com/pacientes', {
+      const res = await fetch(`${API_URL}/pacientes`, {
         headers: { 'Accept': 'application/json' },
       })
       if (res.ok) {
@@ -98,7 +100,7 @@ export default function AdminAgendamentos() {
   const buscarMedicoPorId = async (idMedico: number) => {
     if (!idMedico || idMedico === 0) return null
     try {
-      const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/medicos/${idMedico}`, {
+      const res = await fetch(`${API_URL}/medicos/${idMedico}`, {
         headers: { 'Accept': 'application/json' },
       })
       if (res.ok) {
@@ -113,7 +115,7 @@ export default function AdminAgendamentos() {
   const buscarEspecialidadePorId = async (idEspecialidade: number) => {
     if (!idEspecialidade || idEspecialidade === 0) return null
     try {
-      const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/especialidades/${idEspecialidade}`, {
+      const res = await fetch(`${API_URL}/especialidades/${idEspecialidade}`, {
         headers: { 'Accept': 'application/json' },
       })
       if (res.ok) {
@@ -128,7 +130,7 @@ export default function AdminAgendamentos() {
   const buscarUnidadePorId = async (idUnidade: number) => {
     if (!idUnidade || idUnidade === 0) return null
     try {
-      const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/unidades-saude/${idUnidade}`, {
+      const res = await fetch(`${API_URL}/unidades-saude/${idUnidade}`, {
         headers: { 'Accept': 'application/json' },
       })
       if (res.ok) {
@@ -143,7 +145,7 @@ export default function AdminAgendamentos() {
   const buscarPacientePorId = async (idPaciente: number) => {
     if (!idPaciente || idPaciente === 0) return null
     try {
-      const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/pacientes/${idPaciente}`, {
+      const res = await fetch(`${API_URL}/pacientes/${idPaciente}`, {
         headers: { 'Accept': 'application/json' },
       })
       if (res.ok) {
@@ -159,8 +161,8 @@ export default function AdminAgendamentos() {
     setLoadingLista(true)
     try {
       const url = status && status !== 'TODOS' 
-        ? `https://hc-conecta-sprint-4-1.onrender.com/agendamentos/status/${status}`
-        : 'https://hc-conecta-sprint-4-1.onrender.com/agendamentos'
+        ? `${API_URL}/agendamentos/status/${status}`
+        : `${API_URL}/agendamentos`
       
       const res = await fetch(url, {
         headers: { 'Accept': 'application/json' },
@@ -204,7 +206,7 @@ export default function AdminAgendamentos() {
 
   const carregarEspecialidades = async () => {
     try {
-      const res = await fetch('https://hc-conecta-sprint-4-1.onrender.com/especialidades', {
+      const res = await fetch(`${API_URL}/especialidades`, {
         headers: { 'Accept': 'application/json' },
       })
       if (res.ok) {
@@ -218,7 +220,7 @@ export default function AdminAgendamentos() {
 
   const carregarUnidades = async () => {
     try {
-      const res = await fetch('https://hc-conecta-sprint-4-1.onrender.com/unidades-saude', {
+      const res = await fetch(`${API_URL}/unidades-saude`, {
         headers: { 'Accept': 'application/json' },
       })
       if (res.ok) {
@@ -241,7 +243,7 @@ export default function AdminAgendamentos() {
 
     setLoadingPaciente(true)
     try {
-      const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/pacientes/cpf/${cpfLimpo}`, {
+      const res = await fetch(`${API_URL}/pacientes/cpf/${cpfLimpo}`, {
         headers: { 'Accept': 'application/json' },
       })
       
@@ -282,7 +284,7 @@ export default function AdminAgendamentos() {
 
     try {
       const especialidadeEncoded = encodeURIComponent(especialidadeNome)
-      const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/medicos-especialidades/especialidade/${especialidadeEncoded}/medicos`, {
+      const res = await fetch(`${API_URL}/medicos-especialidades/especialidade/${especialidadeEncoded}/medicos`, {
         headers: { 'Accept': 'application/json' },
       })
       
@@ -410,7 +412,7 @@ export default function AdminAgendamentos() {
 
   const buscarConsultaPorIdAgendamento = async (idAgendamento: number) => {
     try {
-      const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/consultas`, {
+      const res = await fetch(`${API_URL}/consultas`, {
         headers: { 'Accept': 'application/json' },
       })
       if (res.ok) {
@@ -486,12 +488,13 @@ export default function AdminAgendamentos() {
         dataHoraNotificacao: null
       }
 
-      if (editandoId && form.idAgendamento) {
+        if (editandoId && form.idAgendamento) {
         const agendamentoOriginal = agendamentos.find(a => a.idAgendamento === form.idAgendamento)
         const dataHoraAlterada = dataHoraOriginal && form.dataHora && dataHoraOriginal !== form.dataHora
+        const tipoAtendimentoAlterado = agendamentoOriginal?.tipoConsulta !== form.tipoConsulta
         const statusConfirmado = agendamentoOriginal?.status === 'CONFIRMADO' || form.status === 'CONFIRMADO'
         
-        const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/agendamentos/${form.idAgendamento}`, {
+        const res = await fetch(`${API_URL}/agendamentos/${form.idAgendamento}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify(dadosAgendamento),
@@ -502,47 +505,94 @@ export default function AdminAgendamentos() {
           throw new Error(text || 'Falha ao atualizar agendamento')
         }
 
-        if (dataHoraAlterada && statusConfirmado && form.idAgendamento) {
-          try {
-            const consulta = await buscarConsultaPorIdAgendamento(form.idAgendamento)
-            if (consulta && consulta.idConsulta) {
-              const dataHora = new Date(form.dataHora)
-              const dataFormatada = dataHora.toLocaleDateString('pt-BR', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-              })
-              const horarioFormatado = dataHora.toLocaleTimeString('pt-BR', {
-                hour: '2-digit',
-                minute: '2-digit'
-              })
-              const dataHoraISO = dataHora.toISOString()
+        if (statusConfirmado && form.idAgendamento) {
+          const medicoAlterado = agendamentoOriginal?.idMedico !== form.idMedico
+          const especialidadeAlterada = agendamentoOriginal?.idEspecialidade !== form.idEspecialidade
+          const unidadeAlterada = agendamentoOriginal?.idUnidade !== form.idUnidade
+          const pacienteAlterado = agendamentoOriginal?.idPaciente !== form.idPaciente
+          
+          if (dataHoraAlterada || tipoAtendimentoAlterado || medicoAlterado || especialidadeAlterada || unidadeAlterada || pacienteAlterado) {
+            try {
+              const consulta = await buscarConsultaPorIdAgendamento(form.idAgendamento)
+              if (consulta && consulta.idConsulta) {
+                const dataHora = new Date(form.dataHora)
+                const dataFormatada = dataHora.toLocaleDateString('pt-BR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                })
+                const horarioFormatado = dataHora.toLocaleTimeString('pt-BR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+                const dataHoraISO = dataHora.toISOString()
 
-              const dadosConsultaAtualizada = {
-                ...consulta,
-                data: dataFormatada,
-                horario: horarioFormatado,
-                dataHora: dataHoraISO,
-                status: 'REAGENDADA'
+                let cpfPaciente = consulta.cpfPaciente || ''
+                if (pacienteAlterado && form.idPaciente) {
+                  const paciente = await buscarPacientePorId(form.idPaciente)
+                  if (paciente && paciente.cpf) {
+                    cpfPaciente = String(paciente.cpf).replace(/\D/g, '')
+                  }
+                }
+
+                let nomeMedico = consulta.nomeMedico || ''
+                if (medicoAlterado && form.idMedico) {
+                  const medico = await buscarMedicoPorId(form.idMedico)
+                  if (medico) {
+                    nomeMedico = medico.nome || ''
+                  }
+                }
+
+                let nomeEspecialidade = consulta.especialidade || form.especialidade || ''
+                if (especialidadeAlterada && form.especialidade) {
+                  nomeEspecialidade = form.especialidade
+                }
+
+                let nomeUnidade = consulta.nomeUnidade || ''
+                if (unidadeAlterada && form.tipoConsulta === 'PRESENCIAL' && form.idUnidade) {
+                  const unidade = unidades.find(u => u.idUnidadeSaude === form.idUnidade)
+                  if (unidade) {
+                    nomeUnidade = unidade.nomeUnidadeSaude || ''
+                  }
+                } else if (form.tipoConsulta === 'ONLINE') {
+                  nomeUnidade = 'Online'
+                }
+
+                const idUnidadeParaConsulta = form.tipoConsulta === 'PRESENCIAL' ? form.idUnidade : 1
+                const dadosConsultaAtualizada = {
+                  ...consulta,
+                  cpfPaciente: cpfPaciente,
+                  idMedico: form.idMedico,
+                  idEspecialidade: form.idEspecialidade,
+                  idUnidade: idUnidadeParaConsulta,
+                  tipoAtendimento: form.tipoConsulta || 'PRESENCIAL',
+                  nomeMedico: nomeMedico,
+                  especialidade: nomeEspecialidade,
+                  nomeUnidade: nomeUnidade,
+                  data: dataFormatada,
+                  horario: horarioFormatado,
+                  dataHora: dataHoraISO,
+                  status: dataHoraAlterada ? 'REAGENDADA' : consulta.status
+                }
+
+                const consultaRes = await fetch(`${API_URL}/consultas/${consulta.idConsulta}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                  body: JSON.stringify(dadosConsultaAtualizada),
+                })
+
+                if (!consultaRes.ok) {
+                  await consultaRes.text()
+                }
               }
-
-              const consultaRes = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/consultas/${consulta.idConsulta}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify(dadosConsultaAtualizada),
-              })
-
-              if (!consultaRes.ok) {
-                await consultaRes.text()
-              }
+            } catch (err) {
             }
-          } catch (err) {
           }
         }
 
         setSucesso('Agendamento atualizado com sucesso!')
       } else {
-        const res = await fetch('https://hc-conecta-sprint-4-1.onrender.com/agendamentos', {
+        const res = await fetch(`${API_URL}/agendamentos`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify(dadosAgendamento),
@@ -589,7 +639,7 @@ export default function AdminAgendamentos() {
     setSucesso('')
     
     try {
-      const url = `https://hc-conecta-sprint-4-1.onrender.com/agendamentos/${agendamento.idAgendamento}/status?status=CANCELADO`
+      const url = `${API_URL}/agendamentos/${agendamento.idAgendamento}/status?status=CANCELADO`
       
       const res = await fetch(url, {
         method: 'PUT',
@@ -636,7 +686,7 @@ export default function AdminAgendamentos() {
         dataHoraNotificacao: agendamento.dataHoraNotificacao || null
       }
 
-      const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/agendamentos/${agendamento.idAgendamento}`, {
+      const res = await fetch(`${API_URL}/agendamentos/${agendamento.idAgendamento}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(dadosAgendamento),
@@ -690,7 +740,7 @@ export default function AdminAgendamentos() {
             link: 'https://meet.google.com/'
           }
 
-          const consultaRes = await fetch('https://hc-conecta-sprint-4-1.onrender.com/consultas', {
+          const consultaRes = await fetch(`${API_URL}/consultas`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify(dadosConsulta),

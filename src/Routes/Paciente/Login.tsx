@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { authenticateLogin } from '../../api/auth'
+import { authenticateLogin } from '../../Configuracoes/AutenticacaoLogin'
 import Botao from '../../Components/Botao/Botao'
 
 export default function Login() {
