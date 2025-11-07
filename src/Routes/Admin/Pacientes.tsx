@@ -181,25 +181,19 @@ export default function AdminPacientes() {
         try {
           const body = await res.json()
           novoIdPaciente = body?.idPaciente
-          console.log('ID retornado pela API:', novoIdPaciente)
         } catch (e) {
-          console.log('Erro ao parsear resposta da criação:', e)
         }
 
         if (!novoIdPaciente) {
-          console.log('ID não retornado, buscando paciente por CPF...')
           try {
             await new Promise(resolve => setTimeout(resolve, 1000))
             const busca = await fetch('https://hc-conecta-sprint-4-1.onrender.com/pacientes', { headers: { 'Accept': 'application/json' } })
             if (busca.ok) {
               const lista = await busca.json()
-              console.log('Lista de pacientes:', lista)
               const encontrado = Array.isArray(lista) ? lista.find((p: any) => p?.cpf === dadosPaciente.cpf) : undefined
-              console.log('Paciente encontrado:', encontrado)
               if (encontrado?.idPaciente) novoIdPaciente = encontrado.idPaciente
             }
           } catch (e) {
-            console.log('Erro ao buscar paciente:', e)
           }
         }
 
@@ -208,7 +202,6 @@ export default function AdminPacientes() {
         }
 
         if (novoIdPaciente) {
-          console.log('Cadastrando contato com ID:', novoIdPaciente)
           const contatoRes = await fetch('https://hc-conecta-sprint-4-1.onrender.com/contatos-paciente', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -216,15 +209,14 @@ export default function AdminPacientes() {
           })
           if (!contatoRes.ok) {
             const texto = await contatoRes.text()
-            console.log('Erro ao cadastrar contato:', texto)
             throw new Error(texto || 'Paciente criado, mas falha ao cadastrar contato')
           }
         }
 
-         setSucesso('Paciente e contato cadastrados com sucesso!')
-         setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
-         setMostrarFormulario(false)
-         carregarPacientes()
+        setSucesso('Paciente e contato cadastrados com sucesso!')
+        setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
+        setMostrarFormulario(false)
+        carregarPacientes()
       }
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : 'Erro inesperado'
@@ -299,36 +291,36 @@ export default function AdminPacientes() {
   }
 
   return (
-     <div className="bg-white py-8">
-       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="bg-white py-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <header className="mb-8 flex items-center justify-end">
           <Link to="/admin" className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:bg-blue-700 hover:shadow-lg transition-all duration-200">
             Voltar ao Painel
           </Link>
         </header>
 
-            <section className="mb-8">
-              <div className="flex items-center gap-4 mb-4">
-                <h2 className="text-xl font-bold text-blue-600">Pacientes Cadastrados</h2>
-                 <button
-                   onClick={() => {
-                     setMostrarFormulario(!mostrarFormulario)
-                     if (!mostrarFormulario) {
-                       setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
-                       setEditandoId(null)
-                       setErro('')
-                       setSucesso('')
-                       setErrors({})
-                     }
-                   }}
-                   className="hover:opacity-70 transition-opacity p-2 bg-green-100 rounded text-green-600"
-                   aria-label="Adicionar paciente"
-                 >
-                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                   </svg>
-                 </button>
-               </div>
+        <section className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <h2 className="text-xl font-bold text-blue-600">Pacientes Cadastrados</h2>
+            <button
+              onClick={() => {
+                setMostrarFormulario(!mostrarFormulario)
+                if (!mostrarFormulario) {
+                  setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
+                  setEditandoId(null)
+                  setErro('')
+                  setSucesso('')
+                  setErrors({})
+                }
+              }}
+              className="hover:opacity-70 transition-opacity p-2 bg-green-100 rounded text-green-600"
+              aria-label="Adicionar paciente"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </button>
+          </div>
           {loadingLista ? (
             <div className="text-slate-600">Carregando...</div>
           ) : pacientes.length > 0 ? (
@@ -349,13 +341,13 @@ export default function AdminPacientes() {
                     {pacientes.map((p, i) => {
                       const contato = contatos.find(c => c.idPaciente === p.idPaciente)
                       return (
-                         <tr key={i} className="hover:bg-gray-50 transition-colors">
-                           <td className="px-6 py-4 text-sm text-slate-700 font-medium">{p.nome}</td>
-                           <td className="px-6 py-4 text-sm text-slate-700">{p.cpf}</td>
-                           <td className="px-6 py-4 text-sm text-slate-700">{p.dataNascimento}</td>
-                           <td className="px-6 py-4 text-sm text-slate-700">{contato?.telefone || 'N/A'}</td>
-                           <td className="px-6 py-4 text-sm text-slate-700">{contato?.email || 'N/A'}</td>
-                           <td className="px-6 py-4 text-center">
+                        <tr key={i} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 text-sm text-slate-700 font-medium">{p.nome}</td>
+                          <td className="px-6 py-4 text-sm text-slate-700">{p.cpf}</td>
+                          <td className="px-6 py-4 text-sm text-slate-700">{p.dataNascimento}</td>
+                          <td className="px-6 py-4 text-sm text-slate-700">{contato?.telefone || 'N/A'}</td>
+                          <td className="px-6 py-4 text-sm text-slate-700">{contato?.email || 'N/A'}</td>
+                          <td className="px-6 py-4 text-center">
                             <div className="flex justify-center gap-3">
                               <button
                                 onClick={() => handleEdit(p)}
@@ -392,41 +384,41 @@ export default function AdminPacientes() {
           )}
         </section>
 
-         {erro && <div ref={erroRef} className="mb-4 text-red-600 text-sm font-medium">{erro}</div>}
-         {sucesso && (
-           <div className={`mb-4 text-sm font-medium ${sucesso.toLowerCase().includes('exclu') ? 'text-red-600' : 'text-green-600'}`}>
-             {sucesso}
-           </div>
-         )}
+        {erro && <div ref={erroRef} className="mb-4 text-red-600 text-sm font-medium">{erro}</div>}
+        {sucesso && (
+          <div className={`mb-4 text-sm font-medium ${sucesso.toLowerCase().includes('exclu') ? 'text-red-600' : 'text-green-600'}`}>
+            {sucesso}
+          </div>
+        )}
 
-         {mostrarFormulario && (
-           <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
-             <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
-               <div className="flex justify-between items-center p-6 border-b border-gray-200">
-                 <h3 className="text-lg font-semibold text-slate-900">{editandoId ? 'Editar Paciente' : 'Cadastrar Novo Paciente'}</h3>
-                 <button
-                   onClick={() => {
-                     setMostrarFormulario(false)
-                     setEditandoId(null)
-                     setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
-                     setErro('')
-                     setSucesso('')
-                     setErrors({})
-                   }}
-                   disabled={loading}
-                   className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                   aria-label="Fechar formulário"
-                 >
-                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                   </svg>
-                 </button>
-               </div>
-               <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                 <div>
-                   <label htmlFor="nome" className="block text-sm font-medium text-slate-700 mb-2">Nome</label>
-                   <input id="nome" name="nome" value={form.nome} onChange={handleChange} required className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
-                 </div>
+        {mostrarFormulario && (
+          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+              <div className="flex justify-between items-center p-6 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-slate-900">{editandoId ? 'Editar Paciente' : 'Cadastrar Novo Paciente'}</h3>
+                <button
+                  onClick={() => {
+                    setMostrarFormulario(false)
+                    setEditandoId(null)
+                    setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
+                    setErro('')
+                    setSucesso('')
+                    setErrors({})
+                  }}
+                  disabled={loading}
+                  className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Fechar formulário"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <div>
+                  <label htmlFor="nome" className="block text-sm font-medium text-slate-700 mb-2">Nome</label>
+                  <input id="nome" name="nome" value={form.nome} onChange={handleChange} required className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+                </div>
                 <div>
                   <label htmlFor="cpf" className="block text-sm font-medium text-slate-700 mb-2">CPF (máximo 11 dígitos)</label>
                   <input 
@@ -439,74 +431,75 @@ export default function AdminPacientes() {
                     required 
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
-                   {errors.cpf && (
-                     <div className="mt-1 text-sm text-red-600">{errors.cpf}</div>
-                   )}
+                  {errors.cpf && (
+                    <div className="mt-1 text-sm text-red-600">{errors.cpf}</div>
+                  )}
                 </div>
-                 <div>
-                   <label htmlFor="dataNascimento" className="block text-sm font-medium text-slate-700 mb-2">Data de nascimento</label>
-                   <input id="dataNascimento" type="date" name="dataNascimento" value={form.dataNascimento} onChange={handleChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
-                   {errors.dataNascimento && (
-                     <div className="mt-1 text-sm text-red-600">{errors.dataNascimento}</div>
-                   )}
-                 </div>
-                 <div>
-                   <label htmlFor="telefone" className="block text-sm font-medium text-slate-700 mb-2">Telefone (máximo 11 dígitos)</label>
-                   <input 
-                     id="telefone" 
-                     name="telefone" 
-                     value={form.telefone} 
-                     onChange={handleChange} 
-                     maxLength={11}
-                     placeholder="11987654321"
-                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                   />
-                   {errors.telefone && (
-                     <div className="mt-1 text-sm text-red-600">{errors.telefone}</div>
-                   )}
-                 </div>
-                 <div>
-                   <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">Email</label>
-                   <input 
-                     id="email" 
-                     name="email" 
-                     type="email"
-                     value={form.email}
-                     onChange={handleChange}
-                     placeholder="exemplo@dominio.com"
-                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                   />
-                   {errors.email && (
-                     <div className="mt-1 text-sm text-red-600">{errors.email}</div>
-                   )}
-                 </div>
-                 {errors.geral && (
-                   <div className="text-sm text-red-600">{errors.geral}</div>
-                 )}
-                 <div className="flex gap-3 pt-4">
-                   <button
-                     type="button"
-                     onClick={() => {
-                       setMostrarFormulario(false)
-                       setEditandoId(null)
-                       setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
-                       setErro('')
-                       setSucesso('')
-                       setErrors({})
-                     }}
-                     disabled={loading}
-                     className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
-                   >
-                     Cancelar
-                   </button>
-                   <button type="submit" disabled={loading} className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-60">
-                     {loading ? 'Salvando...' : editandoId ? 'Atualizar' : 'Cadastrar'}
-                   </button>
-                 </div>
-               </form>
-             </div>
-           </div>
-         )}
+                <div>
+                  <label htmlFor="dataNascimento" className="block text-sm font-medium text-slate-700 mb-2">Data de nascimento</label>
+                  <input id="dataNascimento" type="date" name="dataNascimento" value={form.dataNascimento} onChange={handleChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+                  {errors.dataNascimento && (
+                    <div className="mt-1 text-sm text-red-600">{errors.dataNascimento}</div>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="telefone" className="block text-sm font-medium text-slate-700 mb-2">Telefone (máximo 11 dígitos)</label>
+                  <input 
+                    id="telefone" 
+                    name="telefone" 
+                    value={form.telefone} 
+                    onChange={handleChange} 
+                    maxLength={11}
+                    placeholder="11987654321"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                  />
+                  {errors.telefone && (
+                    <div className="mt-1 text-sm text-red-600">{errors.telefone}</div>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                  <input 
+                    id="email" 
+                    name="email" 
+                    type="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    placeholder="exemplo@dominio.com"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                  />
+                  {errors.email && (
+                    <div className="mt-1 text-sm text-red-600">{errors.email}</div>
+                  )}
+                </div>
+                {errors.geral && (
+                  <div className="text-sm text-red-600">{errors.geral}</div>
+                )}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMostrarFormulario(false)
+                      setEditandoId(null)
+                      setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
+                      setErro('')
+                      setSucesso('')
+                      setErrors({})
+                    }}
+                    disabled={loading}
+                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+                  >
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={loading} className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-60">
+                    {loading ? 'Salvando...' : editandoId ? 'Atualizar' : 'Cadastrar'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {deletandoId && (
           <div className="fixed inset-0 z-[60] flex items-center">
             <div className="w-full py-6 bg-red-200/80 shadow-lg text-center">

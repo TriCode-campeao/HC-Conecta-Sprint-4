@@ -77,9 +77,6 @@ export default function AdminMedicos() {
               if (especialidadesRes.ok) {
                 especialidades = await especialidadesRes.json()
                 especialidades = Array.isArray(especialidades) ? especialidades : []
-                if (especialidades.length > 0) {
-                  console.log('Especialidades retornadas:', especialidades)
-                }
               }
             } catch (_) {
               especialidades = []
@@ -236,22 +233,19 @@ export default function AdminMedicos() {
           try {
             const nomeEncoded = encodeURIComponent(nomeEspecialidade.trim())
             const urlDelete = `https://hc-conecta-sprint-4-1.onrender.com/medicos-especialidades/medico/${idMedico}/especialidade/nome/${nomeEncoded}`
-            console.log('DELETE:', urlDelete)
             const delRes = await fetch(urlDelete, {
               method: 'DELETE',
               headers: { 'Accept': 'application/json' }
             })
             if (!delRes.ok) {
               const texto = await delRes.text()
-              console.error('Erro DELETE:', texto)
               errosEspecialidades.push(`Falha ao remover ${nomeEspecialidade}: ${texto}`)
             }
           } catch (err) {
-            console.error('Erro ao remover especialidade:', err)
             const mensagemErro = err instanceof Error ? err.message : 'Erro desconhecido'
             if (mensagemErro.includes('Failed to fetch')) {
               errosEspecialidades.push(`Erro de rede ao remover ${nomeEspecialidade}. Verifique se o servidor está online.`)
-        } else {
+            } else {
               errosEspecialidades.push(`Erro ao remover ${nomeEspecialidade}: ${mensagemErro}`)
             }
           }
@@ -261,16 +255,14 @@ export default function AdminMedicos() {
           try {
             const nomeEspecialidadeEncoded = encodeURIComponent(nomeEspecialidade.trim())
             const urlPost = `https://hc-conecta-sprint-4-1.onrender.com/medicos-especialidades/medico/${idMedico}/especialidade/nome/${nomeEspecialidadeEncoded}`
-            console.log('POST:', urlPost)
             const especialidadeRes = await fetch(urlPost, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             })
             if (!especialidadeRes.ok) {
               let mensagemErro = 'Falha ao cadastrar especialidade'
               try {
                 const texto = await especialidadeRes.text()
-                console.error('Erro POST:', texto)
                 if (texto && texto.trim().length > 0) {
                   mensagemErro = texto.trim()
                 } else {
@@ -282,7 +274,6 @@ export default function AdminMedicos() {
               errosEspecialidades.push(`${nomeEspecialidade}: ${mensagemErro}`)
             }
           } catch (err) {
-            console.error('Erro ao adicionar especialidade:', err)
             const mensagemErro = err instanceof Error ? err.message : 'Erro desconhecido'
             if (mensagemErro.includes('Failed to fetch')) {
               errosEspecialidades.push(`Erro de rede ao adicionar ${nomeEspecialidade}. Verifique se o servidor está online.`)

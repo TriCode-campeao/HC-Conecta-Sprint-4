@@ -75,6 +75,10 @@ export default function AdminAgendamentos() {
   const [mostrarModalReagendar, setMostrarModalReagendar] = useState(false)
   const [mostrarModalConfirmar, setMostrarModalConfirmar] = useState(false)
   const [confirmandoId, setConfirmandoId] = useState<number | null>(null)
+  const [cancelandoId, setCancelandoId] = useState<number | null>(null)
+  const [dataHoraOriginal, setDataHoraOriginal] = useState<string>('')
+  const [mostrarAvisoReagendamento, setMostrarAvisoReagendamento] = useState(false)
+  const [confirmadoReagendamento, setConfirmadoReagendamento] = useState(false)
   const erroRef = useRef<HTMLDivElement>(null)
 
   const carregarPacientes = async () => {
@@ -358,6 +362,12 @@ export default function AdminAgendamentos() {
     } else if (name === 'idUnidade') {
       const valorNumerico = value ? Number(value) : undefined
       setForm(prev => ({ ...prev, [name]: valorNumerico }))
+    } else if (name === 'dataHora') {
+      setForm(prev => ({ ...prev, [name]: value }))
+      if (editandoId && dataHoraOriginal && value !== dataHoraOriginal) {
+        setConfirmadoReagendamento(false)
+        setMostrarAvisoReagendamento(false)
+      }
     } else {
       setForm(prev => ({ ...prev, [name]: value }))
     }
@@ -383,6 +393,7 @@ export default function AdminAgendamentos() {
       tipoConsulta: a.tipoConsulta || 'PRESENCIAL',
       idUnidade: a.idUnidade
     })
+    setDataHoraOriginal(a.dataHora || '')
     setNomePaciente(a.nomePaciente || '')
     if (a.cpfPaciente) {
       buscarPacientePorCPF(a.cpfPaciente)
@@ -397,11 +408,39 @@ export default function AdminAgendamentos() {
     setErrors({})
   }
 
+  const buscarConsultaPorIdAgendamento = async (idAgendamento: number) => {
+    try {
+      const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/consultas`, {
+        headers: { 'Accept': 'application/json' },
+      })
+      if (res.ok) {
+        const consultas = await res.json()
+        const consultasArray = Array.isArray(consultas) ? consultas : []
+        return consultasArray.find((c: any) => c.idAgendamento === idAgendamento)
+      }
+    } catch (_) {
+      return null
+    }
+    return null
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErro('')
     setErrors({})
     setSucesso('')
+    
+    if (editandoId && form.idAgendamento) {
+      const agendamentoOriginal = agendamentos.find(a => a.idAgendamento === form.idAgendamento)
+      const dataHoraAlterada = dataHoraOriginal && form.dataHora && dataHoraOriginal !== form.dataHora
+      const statusConfirmado = agendamentoOriginal?.status === 'CONFIRMADO' || form.status === 'CONFIRMADO'
+      
+      if (dataHoraAlterada && statusConfirmado && !confirmadoReagendamento) {
+        setMostrarAvisoReagendamento(true)
+        return
+      }
+    }
+    
     setLoading(true)
     
     try {
@@ -448,6 +487,10 @@ export default function AdminAgendamentos() {
       }
 
       if (editandoId && form.idAgendamento) {
+        const agendamentoOriginal = agendamentos.find(a => a.idAgendamento === form.idAgendamento)
+        const dataHoraAlterada = dataHoraOriginal && form.dataHora && dataHoraOriginal !== form.dataHora
+        const statusConfirmado = agendamentoOriginal?.status === 'CONFIRMADO' || form.status === 'CONFIRMADO'
+        
         const res = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/agendamentos/${form.idAgendamento}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -457,6 +500,44 @@ export default function AdminAgendamentos() {
         if (!res.ok) {
           const text = await res.text()
           throw new Error(text || 'Falha ao atualizar agendamento')
+        }
+
+        if (dataHoraAlterada && statusConfirmado && form.idAgendamento) {
+          try {
+            const consulta = await buscarConsultaPorIdAgendamento(form.idAgendamento)
+            if (consulta && consulta.idConsulta) {
+              const dataHora = new Date(form.dataHora)
+              const dataFormatada = dataHora.toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              })
+              const horarioFormatado = dataHora.toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+              const dataHoraISO = dataHora.toISOString()
+
+              const dadosConsultaAtualizada = {
+                ...consulta,
+                data: dataFormatada,
+                horario: horarioFormatado,
+                dataHora: dataHoraISO,
+                status: 'REAGENDADA'
+              }
+
+              const consultaRes = await fetch(`https://hc-conecta-sprint-4-1.onrender.com/consultas/${consulta.idConsulta}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify(dadosConsultaAtualizada),
+              })
+
+              if (!consultaRes.ok) {
+                await consultaRes.text()
+              }
+            }
+          } catch (err) {
+          }
         }
 
         setSucesso('Agendamento atualizado com sucesso!')
@@ -488,6 +569,9 @@ export default function AdminAgendamentos() {
       setNomePaciente('')
       setMostrarFormulario(false)
       setEditandoId(null)
+      setDataHoraOriginal('')
+      setMostrarAvisoReagendamento(false)
+      setConfirmadoReagendamento(false)
       carregarAgendamentos(filtroStatus)
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : 'Erro inesperado'
@@ -500,37 +584,33 @@ export default function AdminAgendamentos() {
 
   const handleCancelarAgendamento = async (agendamento: Agendamento) => {
     setLoading(true)
+    setCancelandoId(agendamento.idAgendamento || null)
     setErro('')
     setSucesso('')
     
     try {
       const url = `https://hc-conecta-sprint-4-1.onrender.com/agendamentos/${agendamento.idAgendamento}/status?status=CANCELADO`
-      console.log('Enviando requisição para:', url)
       
       const res = await fetch(url, {
         method: 'PUT',
         headers: { 'Accept': 'application/json' },
       })
       
-      console.log('Status da resposta:', res.status)
-      
       if (!res.ok) {
         const text = await res.text()
-        console.log('Erro completo do backend:', text)
         throw new Error(text || 'Falha ao cancelar agendamento')
       }
 
-      const resultado = await res.json()
-      console.log('Sucesso:', resultado)
+      await res.json()
       
       setSucesso('Agendamento cancelado com sucesso!')
       await carregarAgendamentos(filtroStatus)
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : 'Erro ao cancelar agendamento'
-      console.error('Erro capturado:', err)
       setErro(mensagem)
     } finally {
       setLoading(false)
+      setCancelandoId(null)
     }
   }
 
@@ -574,9 +654,7 @@ export default function AdminAgendamentos() {
             throw new Error('Não foi possível obter o CPF do paciente')
           }
 
-          console.log('CPF do paciente obtido:', paciente.cpf)
           const cpfLimpo = String(paciente.cpf).replace(/\D/g, '')
-          console.log('CPF limpo para salvar:', cpfLimpo)
 
           const medico = await buscarMedicoPorId(agendamento.idMedico)
           if (!medico) {
@@ -612,7 +690,6 @@ export default function AdminAgendamentos() {
             link: 'https://meet.google.com/'
           }
 
-          console.log('Criando consulta com dados:', dadosConsulta)
           const consultaRes = await fetch('https://hc-conecta-sprint-4-1.onrender.com/consultas', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -620,32 +697,11 @@ export default function AdminAgendamentos() {
           })
 
           if (!consultaRes.ok) {
-            const text = await consultaRes.text()
-            console.error('Erro ao criar consulta:', text)
-            console.error('Status da resposta:', consultaRes.status)
-            console.error('Headers da resposta:', Object.fromEntries(consultaRes.headers.entries()))
+            await consultaRes.text()
           } else {
-            const consultaCriada = await consultaRes.json()
-            console.log('Consulta criada com sucesso:', consultaCriada)
-            console.log('Dados completos da consulta criada:', JSON.stringify(consultaCriada, null, 2))
-            
-            setTimeout(async () => {
-              try {
-                const verificarRes = await fetch('https://hc-conecta-sprint-4-1.onrender.com/consultas', {
-                  headers: { 'Accept': 'application/json' },
-                })
-                if (verificarRes.ok) {
-                  const todasConsultas = await verificarRes.json()
-                  console.log('Verificação: Total de consultas após criação:', Array.isArray(todasConsultas) ? todasConsultas.length : 0)
-                  console.log('Verificação: Consultas encontradas:', todasConsultas)
-                }
-              } catch (err) {
-                console.error('Erro ao verificar consulta criada:', err)
-              }
-            }, 1000)
+            await consultaRes.json()
           }
         } catch (consultaErr) {
-          console.error('Erro ao criar consulta:', consultaErr)
         }
       }
 
@@ -685,8 +741,8 @@ export default function AdminAgendamentos() {
         </header>
 
         <section className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-4">
-            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600 flex-1">Agendamentos Cadastrados</h2>
+          <div className="flex flex-row items-center gap-3 mb-4">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600">Agendamentos Cadastrados</h2>
             <button
               onClick={() => {
                 setMostrarFormulario(!mostrarFormulario)
@@ -791,19 +847,21 @@ export default function AdminAgendamentos() {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                   </button>
-                                  <button
-                                    onClick={() => {
-                                      setAgendamentoSelecionado(a)
-                                      setMostrarModalReagendar(true)
-                                    }}
-                                    className="hover:opacity-70 transition-opacity p-2 bg-red-100 rounded text-red-600"
-                                    aria-label="Cancelar agendamento"
-                                    title="Cancelar agendamento"
-                                  >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                  </button>
+                                  {a.status !== 'CONFIRMADO' && (
+                                    <button
+                                      onClick={() => {
+                                        setAgendamentoSelecionado(a)
+                                        setMostrarModalReagendar(true)
+                                      }}
+                                      className="hover:opacity-70 transition-opacity p-2 bg-red-100 rounded text-red-600"
+                                      aria-label="Cancelar agendamento"
+                                      title="Cancelar agendamento"
+                                    >
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                    </button>
+                                  )}
                                 </>
                               ) : (
                                 <span className="text-sm text-gray-400 italic">Sem ações disponíveis</span>
@@ -878,19 +936,21 @@ export default function AdminAgendamentos() {
                             </svg>
                             Editar
                           </button>
-                          <button
-                            onClick={() => {
-                              setAgendamentoSelecionado(a)
-                              setMostrarModalReagendar(true)
-                            }}
-                            className="flex-1 hover:opacity-70 transition-opacity px-3 py-2 bg-red-100 rounded text-red-600 text-sm font-medium min-h-[44px] flex items-center justify-center"
-                            aria-label="Cancelar agendamento"
-                          >
-                            <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                            Cancelar
-                          </button>
+                          {a.status !== 'CONFIRMADO' && (
+                            <button
+                              onClick={() => {
+                                setAgendamentoSelecionado(a)
+                                setMostrarModalReagendar(true)
+                              }}
+                              className="flex-1 hover:opacity-70 transition-opacity px-3 py-2 bg-red-100 rounded text-red-600 text-sm font-medium min-h-[44px] flex items-center justify-center"
+                              aria-label="Cancelar agendamento"
+                            >
+                              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                              Cancelar
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <p className="text-xs text-gray-400 italic text-center">Sem ações disponíveis</p>
@@ -919,13 +979,56 @@ export default function AdminAgendamentos() {
 
         {mostrarFormulario && (
           <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[95vh] overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[95vh] overflow-y-auto relative">
+              {mostrarAvisoReagendamento && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-[60] rounded-lg">
+                  <div className="bg-white mx-4 sm:mx-6 p-4 sm:p-6 rounded-lg shadow-xl max-w-md w-full border-2 border-yellow-400">
+                    <div className="mb-4">
+                      <h4 className="text-base sm:text-lg font-bold text-yellow-800 mb-2">
+                        Atenção: Alteração de Data/Hora
+                      </h4>
+                      <p className="text-sm sm:text-base text-yellow-900 mb-4">
+                        Você está alterando a data e hora de um agendamento confirmado. Ao atualizar, o status da consulta será alterado para <strong>REAGENDADA</strong> e o paciente será notificado sobre a mudança.
+                      </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMostrarAvisoReagendamento(false)
+                          setConfirmadoReagendamento(true)
+                        }}
+                        className="flex-1 bg-yellow-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-yellow-700 transition-colors text-sm sm:text-base min-h-[44px] sm:min-h-0"
+                      >
+                        Estou Ciente!
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMostrarAvisoReagendamento(false)
+                          setForm(prev => ({
+                            ...prev,
+                            dataHora: dataHoraOriginal
+                          }))
+                        }}
+                        className="flex-1 bg-gray-200 text-gray-800 px-4 py-2.5 rounded-lg font-semibold hover:bg-gray-300 transition-colors text-sm sm:text-base min-h-[44px] sm:min-h-0"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <div className="flex justify-between items-center p-4 sm:p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
                 <h3 className="text-base sm:text-lg font-semibold text-slate-900 break-words pr-2">{editandoId ? 'Editar Agendamento' : 'Criar Novo Agendamento'}</h3>
                 <button
                   onClick={() => {
                     setMostrarFormulario(false)
                     setEditandoId(null)
+                    setDataHoraOriginal('')
+                    setMostrarAvisoReagendamento(false)
+                    setConfirmadoReagendamento(false)
                     setForm({ 
                       cpfPaciente: '', 
                       idPaciente: undefined,
@@ -1097,6 +1200,9 @@ export default function AdminAgendamentos() {
                     onClick={() => {
                       setMostrarFormulario(false)
                       setEditandoId(null)
+                      setDataHoraOriginal('')
+                      setMostrarAvisoReagendamento(false)
+                      setConfirmadoReagendamento(false)
                       setForm({ 
                         cpfPaciente: '', 
                         idPaciente: undefined,
@@ -1206,6 +1312,14 @@ export default function AdminAgendamentos() {
           <div className="fixed inset-0 z-[60] flex items-center">
             <div className="w-full py-6 bg-green-200/80 shadow-lg text-center">
               <span className="text-green-600 text-3xl sm:text-4xl md:text-5xl font-extrabold">Confirmando...</span>
+            </div>
+          </div>
+        )}
+
+        {cancelandoId && (
+          <div className="fixed inset-0 z-[60] flex items-center">
+            <div className="w-full py-6 bg-red-200/80 shadow-lg text-center">
+              <span className="text-red-600 text-3xl sm:text-4xl md:text-5xl font-extrabold">Cancelando...</span>
             </div>
           </div>
         )}
