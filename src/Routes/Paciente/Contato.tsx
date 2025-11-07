@@ -1,4 +1,5 @@
 import BotaoVoltarHome from '../../Components/BotaoVoltarHome/BotaoVoltarHome'
+import whatsappIcon from '../../assets/img/Redes/WhatsApp.png'
 
 export default function Contato() {
   return (
@@ -18,7 +19,7 @@ export default function Contato() {
               className="inline-flex items-center gap-3 bg-green-500 text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-green-600 transition-colors shadow-lg"
               aria-label="Abrir WhatsApp para contato"
             >
-              <img src="img/WhatsApp.png" alt="WhatsApp" className="w-6 h-6" />
+              <img src={whatsappIcon} alt="WhatsApp" className="w-6 h-6" />
               Clique aqui!
             </a>
           </div>

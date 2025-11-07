@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Botao from '../Botao/Botao'
+import hcLogo from '../../assets/img/hc.png'
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -41,7 +42,7 @@ export default function Header() {
           <div className="flex items-center gap-4 sm:gap-8">
             <Link to={isAdmin ? '/admin' : '/'} className="flex items-center">
               <img
-                src="/img/hc.png"
+                src={hcLogo}
                 alt="HC Conecta Logo"
                 className="w-12 h-12 rounded-lg"
               />

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authenticateLogin } from '../../Configuracoes/AutenticacaoLogin'
 import Botao from '../../Components/Botao/Botao'
+import hcLogo from '../../assets/img/hc.png'
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -49,7 +50,7 @@ export default function Login() {
         <header className="text-center mb-8">
           <div className="mb-6">
             <img
-              src="img/hc.png"
+              src={hcLogo}
               alt="HC Conecta Logo"
               className="w-16 h-16 rounded-lg mx-auto"
             />

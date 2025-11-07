@@ -1,4 +1,9 @@
 import BotaoVoltarHome from '../../Components/BotaoVoltarHome/BotaoVoltarHome'
+import geovanneFoto from '../../assets/img/Participantes/geovanne.png'
+import guilhermeFoto from '../../assets/img/Participantes/guilherme.jpg'
+import lucasFoto from '../../assets/img/Participantes/lucas.png'
+import githubIcon from '../../assets/img/Redes/github.png'
+import linkedinIcon from '../../assets/img/Redes/linkedin.png'
 
 interface Integrante {
   id: number
@@ -17,7 +22,7 @@ export default function Integrantes() {
       nome: "Geovanne Coneglian Passos",
       rm: "562673",
       turma: "1TDSPY",
-      foto: "img/geovanne.png",
+      foto: geovanneFoto,
       github: "https://github.com/GeovanneCP",
       linkedin: "https://www.linkedin.com/in/geovanne-coneglian-775472353/"
     },
@@ -26,7 +31,7 @@ export default function Integrantes() {
       nome: "Guilherme Soares de Almeida",
       rm: "563143",
       turma: "1TDSPY",
-      foto: "img/guilherme.jpg",
+      foto: guilhermeFoto,
       github: "https://github.com/GuuiSOares",
       linkedin: "https://www.linkedin.com/in/guilherme-soares-de-almeida"
     },
@@ -35,7 +40,7 @@ export default function Integrantes() {
       nome: "Lucas Silva Gastão Pinheiro",
       rm: "563960",
       turma: "1TDSPY",
-      foto: "img/lucas.png",
+      foto: lucasFoto,
       github: "https://github.com/Lucasgastaop",
       linkedin: "https://www.linkedin.com/in/lucas-pinheiro-1a7154291/"
     }
@@ -87,7 +92,7 @@ export default function Integrantes() {
                   aria-label={`GitHub de ${integrante.nome}`}
                 >
                   <img
-                    src="img/github.png"
+                    src={githubIcon}
                     alt="GitHub"
                     className="w-8 h-8"
                   />
@@ -100,7 +105,7 @@ export default function Integrantes() {
                   aria-label={`LinkedIn de ${integrante.nome}`}
                 >
                   <img
-                    src="img/linkedin.png"
+                    src={linkedinIcon}
                     alt="LinkedIn"
                     className="w-8 h-8"
                   />

@@ -1,34 +1,39 @@
 import { Link } from 'react-router-dom'
+import consultaIcon from '../../assets/img/Icones/consulta.png'
+import guiaIcon from '../../assets/img/Icones/guia.png'
+import equipeIcon from '../../assets/img/Icones/equipe.png'
+import contatoIcon from '../../assets/img/Icones/contato.png'
+import hcLogo from '../../assets/img/hc.png'
 
 export default function Home() {
 
   const cards = [
     {
-      icon: "img/consulta.png",
+      icon: consultaIcon,
       title: "Minhas Consultas",
       description: "Consulte suas consultas agendadas e acesse os links das teleconsultas.",
       link: "/consultas"
     },
     {
-      icon: "img/guia.png",
+      icon: guiaIcon,
       title: "FAQ - Passo a passo",
       description: "Orientações rápidas: entrar na consulta, testar câmera e mais.",
       link: "/faq"
     },
     {
-      icon: "img/equipe.png",
+      icon: equipeIcon,
       title: "Equipe",
       description: "Conheça quem fez o HC Conecta: Nome, RM e Turma.",
       link: "/integrantes"
     },
     {
-      icon: "img/contato.png",
+      icon: contatoIcon,
       title: "Contato",
       description: "Dúvidas? Fale com a equipe.",
       link: "/contato"
     },
     {
-      icon: "img/hc.png",
+      icon: hcLogo,
       title: "Sobre o Projeto",
       description: "Conheça mais sobre o HC Conecta e nossa missão.",
       link: "/sobre"
