@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { authenticateLogin } from '../../Configuracoes/AutenticacaoLogin'
+import { authenticateLogin } from '../../Types/AutenticacaoLogin'
 import Botao from '../../Components/Botao/Botao'
 import hcLogo from '../../assets/img/hc.png'
 
