@@ -83,7 +83,7 @@ export default function Header() {
             </nav>
           )}
 
-          {!isAdmin && !isLoginPage && (
+          {!isLoginPage && (
             <div className="md:hidden">
               <Botao
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -100,6 +100,35 @@ export default function Header() {
             </div>
           )}
         </div>
+
+        {isAdmin && !isLoginPage && isMenuOpen && (
+          <nav className="md:hidden" role="navigation" aria-label="Menu mobile admin">
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200">
+              <div className="px-2 pt-3 pb-2 space-y-2 sm:px-3">
+                <div className="px-3 py-2">
+                  <span className="text-sm text-slate-600">Logado como:</span>
+                </div>
+                <Link
+                  to="/admin"
+                  className="block w-full bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors text-sm font-medium text-center min-h-[44px] flex items-center justify-center"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Admin
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false)
+                    handleLogout()
+                  }}
+                  className="block w-full bg-red-600 text-white px-4 py-2.5 rounded-lg hover:bg-red-700 active:bg-red-800 transition-colors text-sm font-medium min-h-[44px]"
+                >
+                  Sair
+                </button>
+              </div>
+            </div>
+          </nav>
+        )}
 
         {!isAdmin && !isLoginPage && isMenuOpen && (
           <nav className="md:hidden" role="navigation" aria-label="Menu mobile">
