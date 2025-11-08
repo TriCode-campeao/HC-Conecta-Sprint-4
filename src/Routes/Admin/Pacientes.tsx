@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
 
 const API_URL = (import.meta.env as unknown as { VITE_API_URL: string }).VITE_API_URL
 
@@ -20,10 +21,8 @@ type ContatoPaciente = {
 }
 
 export default function AdminPacientes() {
-  const [form, setForm] = useState<NovoPaciente>({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
-  const [errors, setErrors] = useState<{ cpf?: string; telefone?: string; email?: string; dataNascimento?: string; geral?: string }>({})
   const [sucesso, setSucesso] = useState('')
   const [pacientes, setPacientes] = useState<NovoPaciente[]>([])
   const [contatos, setContatos] = useState<ContatoPaciente[]>([])
@@ -34,6 +33,19 @@ export default function AdminPacientes() {
   const [mostrarModalExcluir, setMostrarModalExcluir] = useState(false)
   const [idParaExcluir, setIdParaExcluir] = useState<number | null>(null)
   const erroRef = useRef<HTMLDivElement>(null)
+
+  const { register, handleSubmit, formState: { errors }, setValue, reset, watch } = useForm<NovoPaciente>({
+    defaultValues: {
+      nome: '',
+      cpf: '',
+      dataNascimento: '',
+      telefone: '',
+      email: ''
+    }
+  })
+
+  const cpfValue = watch('cpf')
+  const telefoneValue = watch('telefone')
 
   const carregarPacientes = async () => {
     setLoadingLista(true)
@@ -74,24 +86,27 @@ export default function AdminPacientes() {
     }
   }, [erro])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    
-    if (name === 'telefone' || name === 'cpf') {
-      const numerosApenas = value.replace(/\D/g, '')
-      if (numerosApenas.length <= 11) {
-        setForm(prev => ({ ...prev, [name]: numerosApenas }))
+  useEffect(() => {
+    if (cpfValue) {
+      const numerosApenas = cpfValue.replace(/\D/g, '')
+      if (numerosApenas.length <= 11 && numerosApenas !== cpfValue) {
+        setValue('cpf', numerosApenas, { shouldValidate: false })
       }
-    } else {
-      setForm(prev => ({ ...prev, [name]: value }))
     }
-    
-    setErrors(prev => ({ ...prev, [name]: undefined, geral: undefined }))
-  }
+  }, [cpfValue, setValue])
+
+  useEffect(() => {
+    if (telefoneValue) {
+      const numerosApenas = telefoneValue.replace(/\D/g, '')
+      if (numerosApenas.length <= 11 && numerosApenas !== telefoneValue) {
+        setValue('telefone', numerosApenas, { shouldValidate: false })
+      }
+    }
+  }, [telefoneValue, setValue])
 
   const handleEdit = (p: NovoPaciente) => {
     const contato = contatos.find(c => c.idPaciente === p.idPaciente)
-    setForm({
+    reset({
       idPaciente: p.idPaciente,
       nome: p.nome || '',
       cpf: p.cpf || '',
@@ -103,30 +118,13 @@ export default function AdminPacientes() {
     setMostrarFormulario(true)
     setErro('')
     setSucesso('')
-    setErrors({})
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (form: NovoPaciente) => {
     setErro('')
-    setErrors({})
     setSucesso('')
     setLoading(true)
     try {
-      
-      const localErrors: { cpf?: string; dataNascimento?: string } = {}
-      if (!form.dataNascimento) {
-        localErrors.dataNascimento = 'Data de nascimento é obrigatória.'
-      }
-      if (!form.cpf || form.cpf.length !== 11) {
-        localErrors.cpf = 'CPF deve conter exatamente 11 dígitos.'
-      }
-      if (Object.keys(localErrors).length) {
-        setErrors(localErrors)
-        setLoading(false)
-        return
-      }
-
       const { idPaciente, telefone, email, ...dadosPaciente } = form
 
       if (editandoId && idPaciente) {
@@ -152,7 +150,7 @@ export default function AdminPacientes() {
             throw new Error(texto || 'Paciente atualizado, mas falha ao atualizar contato')
           }
         } else {
-          const contatoRes = await fetch('${API_URL}/contatos-paciente', {
+          const contatoRes = await fetch(`${API_URL}/contatos-paciente`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({ idPaciente, telefone, email })
@@ -164,12 +162,12 @@ export default function AdminPacientes() {
         }
 
         setSucesso('Paciente atualizado com sucesso!')
-        setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
+        reset({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
         setMostrarFormulario(false)
         setEditandoId(null)
         carregarPacientes()
       } else {
-        const res = await fetch('${API_URL}/pacientes', {
+        const res = await fetch(`${API_URL}/pacientes`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify(dadosPaciente),
@@ -189,7 +187,7 @@ export default function AdminPacientes() {
         if (!novoIdPaciente) {
           try {
             await new Promise(resolve => setTimeout(resolve, 1000))
-            const busca = await fetch('${API_URL}/pacientes', { headers: { 'Accept': 'application/json' } })
+            const busca = await fetch(`${API_URL}/pacientes`, { headers: { 'Accept': 'application/json' } })
             if (busca.ok) {
               const lista = await busca.json()
               const encontrado = Array.isArray(lista) ? lista.find((p: any) => p?.cpf === dadosPaciente.cpf) : undefined
@@ -204,7 +202,7 @@ export default function AdminPacientes() {
         }
 
         if (novoIdPaciente) {
-          const contatoRes = await fetch('${API_URL}/contatos-paciente', {
+          const contatoRes = await fetch(`${API_URL}/contatos-paciente`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({ idPaciente: novoIdPaciente, telefone, email })
@@ -216,25 +214,13 @@ export default function AdminPacientes() {
         }
 
         setSucesso('Paciente e contato cadastrados com sucesso!')
-        setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
+        reset({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
         setMostrarFormulario(false)
         carregarPacientes()
       }
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : 'Erro inesperado'
-      
-      if (/cpf/i.test(mensagem)) {
-        setErrors(prev => ({ ...prev, cpf: mensagem }))
-      } else if (/telefone/i.test(mensagem)) {
-        setErrors(prev => ({ ...prev, telefone: mensagem }))
-      } else if (/email/i.test(mensagem)) {
-        setErrors(prev => ({ ...prev, email: mensagem }))
-      } else if (/nascimento/i.test(mensagem)) {
-        setErrors(prev => ({ ...prev, dataNascimento: mensagem }))
-      } else {
-        setErrors(prev => ({ ...prev, geral: mensagem }))
-      }
-      setErro('')
+      setErro(mensagem)
     } finally {
       setLoading(false)
     }
@@ -252,7 +238,7 @@ export default function AdminPacientes() {
     try {
       let contatoId: number | undefined
       try {
-        const contatosResp = await fetch('${API_URL}/contatos-paciente', { headers: { 'Accept': 'application/json' } })
+        const contatosResp = await fetch(`${API_URL}/contatos-paciente`, { headers: { 'Accept': 'application/json' } })
         if (contatosResp.ok) {
           const lista: any[] = await contatosResp.json()
           const c = Array.isArray(lista) ? lista.find(x => x?.idPaciente === idParaExcluir) : undefined
@@ -308,11 +294,10 @@ export default function AdminPacientes() {
               onClick={() => {
                 setMostrarFormulario(!mostrarFormulario)
                 if (!mostrarFormulario) {
-                  setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
+                  reset({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
                   setEditandoId(null)
                   setErro('')
                   setSucesso('')
-                  setErrors({})
                 }
               }}
               className="hover:opacity-70 transition-opacity p-2 bg-green-100 rounded text-green-600"
@@ -402,10 +387,9 @@ export default function AdminPacientes() {
                   onClick={() => {
                     setMostrarFormulario(false)
                     setEditandoId(null)
-                    setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
+                    reset({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
                     setErro('')
                     setSucesso('')
-                    setErrors({})
                   }}
                   disabled={loading}
                   className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -416,66 +400,85 @@ export default function AdminPacientes() {
                   </svg>
                 </button>
               </div>
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
                 <div>
                   <label htmlFor="nome" className="block text-sm font-medium text-slate-700 mb-2">Nome</label>
-                  <input id="nome" name="nome" value={form.nome} onChange={handleChange} required className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+                  <input 
+                    id="nome" 
+                    {...register('nome', { required: 'Nome é obrigatório' })} 
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                  />
+                  {errors.nome && (
+                    <div className="mt-1 text-sm text-red-600">{errors.nome.message}</div>
+                  )}
                 </div>
                 <div>
                   <label htmlFor="cpf" className="block text-sm font-medium text-slate-700 mb-2">CPF (máximo 11 dígitos)</label>
                   <input 
                     id="cpf" 
-                    name="cpf" 
-                    value={form.cpf} 
-                    onChange={handleChange} 
+                    {...register('cpf', { 
+                      required: 'CPF é obrigatório',
+                      validate: (value) => {
+                        const numerosApenas = value.replace(/\D/g, '')
+                        if (numerosApenas.length !== 11) {
+                          return 'CPF deve conter exatamente 11 dígitos.'
+                        }
+                        return true
+                      }
+                    })} 
                     maxLength={11}
                     placeholder="00000000000"
-                    required 
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
                   {errors.cpf && (
-                    <div className="mt-1 text-sm text-red-600">{errors.cpf}</div>
+                    <div className="mt-1 text-sm text-red-600">{errors.cpf.message}</div>
                   )}
                 </div>
                 <div>
                   <label htmlFor="dataNascimento" className="block text-sm font-medium text-slate-700 mb-2">Data de nascimento</label>
-                  <input id="dataNascimento" type="date" name="dataNascimento" value={form.dataNascimento} onChange={handleChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+                  <input 
+                    id="dataNascimento" 
+                    type="date" 
+                    {...register('dataNascimento', { required: 'Data de nascimento é obrigatória' })} 
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                  />
                   {errors.dataNascimento && (
-                    <div className="mt-1 text-sm text-red-600">{errors.dataNascimento}</div>
+                    <div className="mt-1 text-sm text-red-600">{errors.dataNascimento.message}</div>
                   )}
                 </div>
                 <div>
                   <label htmlFor="telefone" className="block text-sm font-medium text-slate-700 mb-2">Telefone (máximo 11 dígitos)</label>
                   <input 
                     id="telefone" 
-                    name="telefone" 
-                    value={form.telefone} 
-                    onChange={handleChange} 
+                    {...register('telefone')} 
                     maxLength={11}
                     placeholder="11987654321"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
                   {errors.telefone && (
-                    <div className="mt-1 text-sm text-red-600">{errors.telefone}</div>
+                    <div className="mt-1 text-sm text-red-600">{errors.telefone.message}</div>
                   )}
                 </div>
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">Email</label>
                   <input 
                     id="email" 
-                    name="email" 
                     type="email"
-                    value={form.email}
-                    onChange={handleChange}
+                    {...register('email', {
+                      pattern: {
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: 'Email inválido'
+                      }
+                    })}
                     placeholder="exemplo@dominio.com"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
                   {errors.email && (
-                    <div className="mt-1 text-sm text-red-600">{errors.email}</div>
+                    <div className="mt-1 text-sm text-red-600">{errors.email.message}</div>
                   )}
                 </div>
-                {errors.geral && (
-                  <div className="text-sm text-red-600">{errors.geral}</div>
+                {erro && (
+                  <div className="text-sm text-red-600">{erro}</div>
                 )}
                 <div className="flex gap-3 pt-4">
                   <button
@@ -483,10 +486,9 @@ export default function AdminPacientes() {
                     onClick={() => {
                       setMostrarFormulario(false)
                       setEditandoId(null)
-                      setForm({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
+                      reset({ nome: '', cpf: '', dataNascimento: '', telefone: '', email: '' })
                       setErro('')
                       setSucesso('')
-                      setErrors({})
                     }}
                     disabled={loading}
                     className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"

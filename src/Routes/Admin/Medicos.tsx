@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
 
 const API_URL = (import.meta.env as unknown as { VITE_API_URL: string }).VITE_API_URL
 
@@ -26,12 +27,10 @@ type NovoMedico = {
 }
 
 export default function AdminMedicos() {
-  const [form, setForm] = useState<NovoMedico>({ nome: '', crm: 'CRM', especialidade: '' })
   const [especialidadesSelecionadas, setEspecialidadesSelecionadas] = useState<string[]>([])
   const [especialidadesOriginais, setEspecialidadesOriginais] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
-  const [errors, setErrors] = useState<{ crm?: string; nome?: string; especialidade?: string; geral?: string }>({})
   const [sucesso, setSucesso] = useState('')
   const [medicos, setMedicos] = useState<NovoMedico[]>([])
   const [loadingLista, setLoadingLista] = useState(false)
@@ -42,6 +41,16 @@ export default function AdminMedicos() {
   const [mostrarModalExcluir, setMostrarModalExcluir] = useState(false)
   const [idParaExcluir, setIdParaExcluir] = useState<number | null>(null)
   const erroRef = useRef<HTMLDivElement>(null)
+
+  const { register, handleSubmit, formState: { errors }, setValue, reset, watch } = useForm<NovoMedico>({
+    defaultValues: {
+      nome: '',
+      crm: 'CRM',
+      especialidade: ''
+    }
+  })
+
+  const crmValue = watch('crm')
 
   const extrairNomeEspecialidade = (e: Especialidade | any): string => {
     if (typeof e === 'string') return e
@@ -128,33 +137,27 @@ export default function AdminMedicos() {
     }
   }, [erro])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    
-    if (name === 'crm') {
-      if (!value.startsWith('CRM')) {
-        setForm(prev => ({ ...prev, [name]: 'CRM' }))
+  useEffect(() => {
+    if (crmValue) {
+      if (!crmValue.startsWith('CRM')) {
+        setValue('crm', 'CRM', { shouldValidate: false })
         return
       }
-      if (value.length > 11) {
-        setForm(prev => ({ ...prev, [name]: prev.crm }))
+      if (crmValue.length > 11) {
         return
       }
-      const parteAposCRM = value.substring(3)
+      const parteAposCRM = crmValue.substring(3)
       const valorConvertidoMaiusculo = parteAposCRM.toUpperCase()
       const apenasNumerosELetras = valorConvertidoMaiusculo.replace(/[^0-9A-Z]/g, '')
       const valorFiltrado = 'CRM' + apenasNumerosELetras
-      setForm(prev => ({ ...prev, [name]: valorFiltrado }))
-    } else {
-      setForm(prev => ({ ...prev, [name]: value }))
+      if (valorFiltrado !== crmValue) {
+        setValue('crm', valorFiltrado, { shouldValidate: false })
+      }
     }
-    
-    setErrors(prev => ({ ...prev, [name]: undefined, geral: undefined }))
-  }
+  }, [crmValue, setValue])
 
   const handleRemoverEspecialidade = (index: number) => {
     setEspecialidadesSelecionadas(prev => prev.filter((_, i) => i !== index))
-    setErrors(prev => ({ ...prev, especialidade: undefined }))
   }
 
   const handleEdit = (m: NovoMedico) => {
@@ -162,7 +165,7 @@ export default function AdminMedicos() {
     const especialidadesLista = m.especialidades && m.especialidades.length > 0
       ? m.especialidades.map((e: Especialidade) => extrairNomeEspecialidade(e))
       : []
-    setForm({
+    reset({
       idMedico: m.idMedico,
       nome: m.nome || '',
       crm: crmComPrefixo,
@@ -174,36 +177,15 @@ export default function AdminMedicos() {
     setMostrarFormulario(true)
     setErro('')
     setSucesso('')
-    setErrors({})
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (form: NovoMedico) => {
     setErro('')
-    setErrors({})
     setSucesso('')
     setLoading(true)
     try {
-      const localErrors: { crm?: string; nome?: string; especialidade?: string } = {}
-      if (!form.nome || form.nome.trim().length === 0) {
-        localErrors.nome = 'Nome é obrigatório.'
-      } else if (form.nome.trim().length < 3 || form.nome.trim().length > 100) {
-        localErrors.nome = 'Nome deve ter entre 3 e 100 caracteres.'
-      }
-      if (!form.crm || form.crm === 'CRM' || form.crm.length !== 11) {
-        localErrors.crm = 'CRM deve ter exatamente 11 caracteres.'
-      }
-      if (form.crm && form.crm.length === 11) {
-        const numeroDeDigitos = (form.crm.match(/\d/g) || []).length
-        if (numeroDeDigitos < 4 || numeroDeDigitos > 6) {
-          localErrors.crm = 'CRM deve conter entre 4 e 6 números.'
-        }
-      }
       if (especialidadesSelecionadas.length === 0) {
-        localErrors.especialidade = 'Selecione pelo menos uma especialidade.'
-      }
-      if (Object.keys(localErrors).length) {
-        setErrors(localErrors)
+        setErro('Selecione pelo menos uma especialidade.')
         setLoading(false)
         return
       }
@@ -290,14 +272,14 @@ export default function AdminMedicos() {
         }
 
         setSucesso('Médico atualizado com sucesso!')
-        setForm({ nome: '', crm: 'CRM', especialidade: '' })
+        reset({ nome: '', crm: 'CRM', especialidade: '' })
         setEspecialidadesSelecionadas([])
         setEspecialidadesOriginais([])
         setMostrarFormulario(false)
         setEditandoId(null)
         carregarMedicos()
       } else {
-        const res = await fetch('${API_URL}/medicos', {
+        const res = await fetch(`${API_URL}/medicos`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify(dadosMedico),
@@ -315,7 +297,7 @@ export default function AdminMedicos() {
 
         if (!novoIdMedico) {
           try {
-            const busca = await fetch('${API_URL}/medicos', { headers: { 'Accept': 'application/json' } })
+            const busca = await fetch(`${API_URL}/medicos`, { headers: { 'Accept': 'application/json' } })
             if (busca.ok) {
               const lista = await busca.json()
               const encontrado = Array.isArray(lista) ? lista.find((m: any) => m?.crmMedico === form.crm) : undefined
@@ -357,24 +339,14 @@ export default function AdminMedicos() {
         }
 
          setSucesso('Médico cadastrado com sucesso!')
-         setForm({ nome: '', crm: 'CRM', especialidade: '' })
+         reset({ nome: '', crm: 'CRM', especialidade: '' })
          setEspecialidadesSelecionadas([])
          setMostrarFormulario(false)
          carregarMedicos()
       }
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : 'Erro inesperado'
-      
-      if (/crm/i.test(mensagem)) {
-        setErrors(prev => ({ ...prev, crm: mensagem }))
-      } else if (/nome/i.test(mensagem)) {
-        setErrors(prev => ({ ...prev, nome: mensagem }))
-      } else if (/especialidade/i.test(mensagem)) {
-        setErrors(prev => ({ ...prev, especialidade: mensagem }))
-      } else {
-        setErrors(prev => ({ ...prev, geral: mensagem }))
-      }
-      setErro('')
+      setErro(mensagem)
     } finally {
       setLoading(false)
     }
@@ -440,13 +412,12 @@ export default function AdminMedicos() {
                    onClick={() => {
                      setMostrarFormulario(!mostrarFormulario)
                      if (!mostrarFormulario) {
-                      setForm({ nome: '', crm: 'CRM', especialidade: '' })
+                      reset({ nome: '', crm: 'CRM', especialidade: '' })
                       setEspecialidadesSelecionadas([])
                       setEspecialidadesOriginais([])
                        setEditandoId(null)
                        setErro('')
                        setSucesso('')
-                       setErrors({})
                      }
                    }}
                    className="hover:opacity-70 transition-opacity p-2 bg-green-100 rounded text-green-600"
@@ -538,16 +509,15 @@ export default function AdminMedicos() {
                <div className="flex justify-between items-center p-6 border-b border-gray-200">
                  <h3 className="text-lg font-semibold text-slate-900">{editandoId ? 'Editar Médico' : 'Cadastrar Novo Médico'}</h3>
                  <button
-                   onClick={() => {
-                     setMostrarFormulario(false)
-                     setEditandoId(null)
-                     setForm({ nome: '', crm: 'CRM', especialidade: '' })
-                     setEspecialidadesSelecionadas([])
-                     setEspecialidadesOriginais([])
-                     setErro('')
-                     setSucesso('')
-                     setErrors({})
-                   }}
+                  onClick={() => {
+                    setMostrarFormulario(false)
+                    setEditandoId(null)
+                    reset({ nome: '', crm: 'CRM', especialidade: '' })
+                    setEspecialidadesSelecionadas([])
+                    setEspecialidadesOriginais([])
+                    setErro('')
+                    setSucesso('')
+                  }}
                    disabled={loading}
                    className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                    aria-label="Fechar formulário"
@@ -557,27 +527,44 @@ export default function AdminMedicos() {
                    </svg>
                  </button>
                </div>
-               <form onSubmit={handleSubmit} className="p-6 space-y-4">
+               <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
                  <div>
                    <label htmlFor="nome" className="block text-sm font-medium text-slate-700 mb-2">Nome</label>
-                   <input id="nome" name="nome" value={form.nome} onChange={handleChange} required className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+                   <input 
+                     id="nome" 
+                     {...register('nome', { 
+                       required: 'Nome é obrigatório',
+                       minLength: { value: 3, message: 'Nome deve ter entre 3 e 100 caracteres.' },
+                       maxLength: { value: 100, message: 'Nome deve ter entre 3 e 100 caracteres.' }
+                     })} 
+                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                   />
                    {errors.nome && (
-                     <div className="mt-1 text-sm text-red-600">{errors.nome}</div>
+                     <div className="mt-1 text-sm text-red-600">{errors.nome.message}</div>
                    )}
                  </div>
                 <div>
                   <label htmlFor="crm" className="block text-sm font-medium text-slate-700 mb-2">CRM/NúmeroCRM/Estado = (SIGLA)</label>
                   <input 
                     id="crm" 
-                    name="crm" 
-                    value={form.crm} 
-                    onChange={handleChange} 
+                    {...register('crm', { 
+                      required: 'CRM é obrigatório',
+                      validate: (value) => {
+                        if (value === 'CRM' || value.length !== 11) {
+                          return 'CRM deve ter exatamente 11 caracteres.'
+                        }
+                        const numeroDeDigitos = (value.match(/\d/g) || []).length
+                        if (numeroDeDigitos < 4 || numeroDeDigitos > 6) {
+                          return 'CRM deve conter entre 4 e 6 números.'
+                        }
+                        return true
+                      }
+                    })} 
                     maxLength={11}
-                    required 
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
                    {errors.crm && (
-                     <div className="mt-1 text-sm text-red-600">{errors.crm}</div>
+                     <div className="mt-1 text-sm text-red-600">{errors.crm.message}</div>
                    )}
                 </div>
                  <div>
@@ -606,14 +593,12 @@ export default function AdminMedicos() {
                    )}
                    <select 
                      id="especialidade" 
-                     name="especialidade" 
-                     value={form.especialidade} 
+                     {...register('especialidade')}
                      onChange={(e) => {
                        const valor = e.target.value
                        if (valor && !especialidadesSelecionadas.includes(valor)) {
                          setEspecialidadesSelecionadas(prev => [...prev, valor])
-                         setForm(prev => ({ ...prev, especialidade: '' }))
-                         setErrors(prev => ({ ...prev, especialidade: undefined }))
+                         setValue('especialidade', '')
                        }
                      }}
                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
@@ -627,12 +612,12 @@ export default function AdminMedicos() {
                          </option>
                        ))}
                    </select>
-                   {errors.especialidade && (
-                     <div className="mt-1 text-sm text-red-600">{errors.especialidade}</div>
+                   {especialidadesSelecionadas.length === 0 && (
+                     <div className="mt-1 text-sm text-red-600">Selecione pelo menos uma especialidade.</div>
                    )}
                  </div>
-                 {errors.geral && (
-                   <div className="text-sm text-red-600">{errors.geral}</div>
+                 {erro && (
+                   <div className="text-sm text-red-600">{erro}</div>
                  )}
                  <div className="flex gap-3 pt-4">
                    <button
@@ -640,12 +625,11 @@ export default function AdminMedicos() {
                      onClick={() => {
                        setMostrarFormulario(false)
                        setEditandoId(null)
-                       setForm({ nome: '', crm: 'CRM', especialidade: '' })
+                       reset({ nome: '', crm: 'CRM', especialidade: '' })
                        setEspecialidadesSelecionadas([])
                        setEspecialidadesOriginais([])
                        setErro('')
                        setSucesso('')
-                       setErrors({})
                      }}
                      disabled={loading}
                      className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"

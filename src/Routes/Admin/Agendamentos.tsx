@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
 
 const API_URL = (import.meta.env as unknown as { VITE_API_URL: string }).VITE_API_URL
 
@@ -48,19 +49,8 @@ type Agendamento = {
 }
 
 export default function AdminAgendamentos() {
-  const [form, setForm] = useState<Agendamento>({ 
-    cpfPaciente: '',
-    idPaciente: undefined,
-    idMedico: 0,
-    idEspecialidade: undefined,
-    especialidade: '', 
-    dataHora: '',
-    status: 'PENDENTE',
-    tipoConsulta: 'PRESENCIAL'
-  })
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
-  const [errors, setErrors] = useState<{ [key: string]: string }>({})
   const [sucesso, setSucesso] = useState('')
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([])
   const [pacientes, setPacientes] = useState<Paciente[]>([])
@@ -81,7 +71,27 @@ export default function AdminAgendamentos() {
   const [dataHoraOriginal, setDataHoraOriginal] = useState<string>('')
   const [mostrarAvisoReagendamento, setMostrarAvisoReagendamento] = useState(false)
   const [confirmadoReagendamento, setConfirmadoReagendamento] = useState(false)
+  const [idMedicoOriginal, setIdMedicoOriginal] = useState<number | undefined>(undefined)
+  const [carregandoMedicos, setCarregandoMedicos] = useState(false)
   const erroRef = useRef<HTMLDivElement>(null)
+
+  const { register, handleSubmit, formState: { errors }, setValue, reset, watch } = useForm<Agendamento>({
+    defaultValues: {
+      cpfPaciente: '',
+      idPaciente: undefined,
+      idMedico: 0,
+      idEspecialidade: undefined,
+      especialidade: '',
+      dataHora: '',
+      status: 'PENDENTE',
+      tipoConsulta: 'PRESENCIAL'
+    }
+  })
+
+  const cpfPacienteValue = watch('cpfPaciente')
+  const especialidadeValue = watch('especialidade')
+  const tipoConsultaValue = watch('tipoConsulta')
+  const dataHoraValue = watch('dataHora')
 
   const carregarPacientes = async () => {
     try {
@@ -237,7 +247,7 @@ export default function AdminAgendamentos() {
     
     if (cpfLimpo.length !== 11) {
       setNomePaciente('')
-      setForm(prev => ({ ...prev, idPaciente: undefined }))
+      setValue('idPaciente', undefined, { shouldValidate: false })
       return
     }
 
@@ -250,21 +260,14 @@ export default function AdminAgendamentos() {
       if (res.ok) {
         const paciente = await res.json()
         setNomePaciente(paciente.nome || '')
-        setForm(prev => ({ ...prev, idPaciente: paciente.idPaciente }))
-        setErrors(prev => {
-          const newErrors = { ...prev }
-          delete newErrors.cpfPaciente
-          return newErrors
-        })
+        setValue('idPaciente', paciente.idPaciente, { shouldValidate: false })
       } else {
         setNomePaciente('')
-        setForm(prev => ({ ...prev, idPaciente: undefined }))
-        setErrors(prev => ({ ...prev, cpfPaciente: 'CPF não encontrado' }))
+        setValue('idPaciente', undefined, { shouldValidate: false })
       }
     } catch (_) {
       setNomePaciente('')
-      setForm(prev => ({ ...prev, idPaciente: undefined }))
-      setErrors(prev => ({ ...prev, cpfPaciente: 'Erro ao buscar paciente' }))
+      setValue('idPaciente', undefined, { shouldValidate: false })
     } finally {
       setLoadingPaciente(false)
     }
@@ -279,9 +282,11 @@ export default function AdminAgendamentos() {
   const filtrarMedicosPorEspecialidade = async (especialidadeNome: string) => {
     if (!especialidadeNome) {
       setMedicosFiltrados([])
+      setCarregandoMedicos(false)
       return
     }
 
+    setCarregandoMedicos(true)
     try {
       const especialidadeEncoded = encodeURIComponent(especialidadeNome)
       const res = await fetch(`${API_URL}/medicos-especialidades/especialidade/${especialidadeEncoded}/medicos`, {
@@ -296,6 +301,8 @@ export default function AdminAgendamentos() {
       }
     } catch (_) {
       setMedicosFiltrados([])
+    } finally {
+      setCarregandoMedicos(false)
     }
   }
 
@@ -310,13 +317,6 @@ export default function AdminAgendamentos() {
     carregarAgendamentos(filtroStatus)
   }, [filtroStatus])
 
-  useEffect(() => {
-    if (form.especialidade) {
-      filtrarMedicosPorEspecialidade(form.especialidade)
-    } else {
-      setMedicosFiltrados([])
-    }
-  }, [form.especialidade])
 
   useEffect(() => {
     if (erro && erroRef.current) {
@@ -324,11 +324,9 @@ export default function AdminAgendamentos() {
     }
   }, [erro])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    
-    if (name === 'cpfPaciente') {
-      const apenasNumeros = value.replace(/\D/g, '')
+  useEffect(() => {
+    if (cpfPacienteValue) {
+      const apenasNumeros = cpfPacienteValue.replace(/\D/g, '')
       const limitado = apenasNumeros.slice(0, 11)
       let formatado = limitado
       if (limitado.length > 9) {
@@ -338,52 +336,62 @@ export default function AdminAgendamentos() {
       } else if (limitado.length > 3) {
         formatado = limitado.replace(/(\d{3})(\d{0,3})/, '$1.$2')
       }
-      setForm(prev => ({ ...prev, [name]: formatado }))
+      if (formatado !== cpfPacienteValue) {
+        setValue('cpfPaciente', formatado, { shouldValidate: false })
+      }
       
       if (limitado.length === 11) {
         buscarPacientePorCPF(formatado)
       } else {
         setNomePaciente('')
       }
-    } else if (name === 'especialidade') {
-      const especialidadeSelecionada = especialidades.find(e => e.nomeEspecialidade === value)
-      setForm(prev => ({ 
-        ...prev, 
-        especialidade: value, 
-        idEspecialidade: especialidadeSelecionada?.idEspecialidade,
-        idMedico: 0 
-      }))
-    } else if (name === 'tipoConsulta') {
-      setForm(prev => ({ 
-        ...prev, 
-        [name]: value,
-        idUnidade: value === 'ONLINE' ? undefined : prev.idUnidade
-      }))
-    } else if (name === 'idMedico') {
-      setForm(prev => ({ ...prev, [name]: Number(value) }))
-    } else if (name === 'idUnidade') {
-      const valorNumerico = value ? Number(value) : undefined
-      setForm(prev => ({ ...prev, [name]: valorNumerico }))
-    } else if (name === 'dataHora') {
-      setForm(prev => ({ ...prev, [name]: value }))
-      if (editandoId && dataHoraOriginal && value !== dataHoraOriginal) {
-        setConfirmadoReagendamento(false)
-        setMostrarAvisoReagendamento(false)
-      }
-    } else {
-      setForm(prev => ({ ...prev, [name]: value }))
     }
-    
-    setErrors(prev => {
-      const newErrors = { ...prev }
-      delete newErrors[name]
-      delete newErrors.geral
-      return newErrors
-    })
-  }
+  }, [cpfPacienteValue, setValue])
 
-  const handleEdit = (a: Agendamento) => {
-    setForm({
+  useEffect(() => {
+    if (especialidadeValue) {
+      const especialidadeSelecionada = especialidades.find(e => e.nomeEspecialidade === especialidadeValue)
+      if (especialidadeSelecionada) {
+        setValue('idEspecialidade', especialidadeSelecionada.idEspecialidade, { shouldValidate: false })
+        filtrarMedicosPorEspecialidade(especialidadeValue)
+        if (!editandoId) {
+          setValue('idMedico', 0, { shouldValidate: false })
+        }
+      }
+    } else if (!especialidadeValue && !editandoId) {
+      setMedicosFiltrados([])
+      setValue('idMedico', 0, { shouldValidate: false })
+    }
+  }, [especialidadeValue, especialidades, setValue, editandoId])
+
+  useEffect(() => {
+    if (tipoConsultaValue === 'ONLINE') {
+      setValue('idUnidade', undefined, { shouldValidate: false })
+    }
+  }, [tipoConsultaValue, setValue])
+
+  useEffect(() => {
+    if (editandoId && medicosFiltrados.length > 0 && idMedicoOriginal && idMedicoOriginal > 0) {
+      const medicoExiste = medicosFiltrados.some(m => m.idMedico === idMedicoOriginal)
+      if (medicoExiste) {
+        setValue('idMedico', idMedicoOriginal, { shouldValidate: false })
+      }
+    }
+  }, [medicosFiltrados, editandoId, idMedicoOriginal, setValue])
+
+  useEffect(() => {
+    if (editandoId && dataHoraOriginal && dataHoraValue && dataHoraValue !== dataHoraOriginal) {
+      setConfirmadoReagendamento(false)
+      setMostrarAvisoReagendamento(false)
+    }
+  }, [dataHoraValue, dataHoraOriginal, editandoId])
+
+  const handleEdit = async (a: Agendamento) => {
+    setDataHoraOriginal(a.dataHora || '')
+    setNomePaciente(a.nomePaciente || '')
+    setIdMedicoOriginal(a.idMedico)
+    
+    reset({
       idAgendamento: a.idAgendamento,
       cpfPaciente: a.cpfPaciente || '',
       idPaciente: a.idPaciente,
@@ -395,19 +403,19 @@ export default function AdminAgendamentos() {
       tipoConsulta: a.tipoConsulta || 'PRESENCIAL',
       idUnidade: a.idUnidade
     })
-    setDataHoraOriginal(a.dataHora || '')
-    setNomePaciente(a.nomePaciente || '')
-    if (a.cpfPaciente) {
-      buscarPacientePorCPF(a.cpfPaciente)
-    }
-    if (a.especialidade) {
-      filtrarMedicosPorEspecialidade(a.especialidade)
-    }
+    
     setEditandoId(a.idAgendamento || null)
     setMostrarFormulario(true)
     setErro('')
     setSucesso('')
-    setErrors({})
+    
+    if (a.especialidade) {
+      filtrarMedicosPorEspecialidade(a.especialidade)
+    }
+    
+    if (a.cpfPaciente) {
+      buscarPacientePorCPF(a.cpfPaciente)
+    }
   }
 
   const buscarConsultaPorIdAgendamento = async (idAgendamento: number) => {
@@ -426,10 +434,8 @@ export default function AdminAgendamentos() {
     return null
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (form: Agendamento) => {
     setErro('')
-    setErrors({})
     setSucesso('')
     
     if (editandoId && form.idAgendamento) {
@@ -446,35 +452,6 @@ export default function AdminAgendamentos() {
     setLoading(true)
     
     try {
-      const localErrors: { [key: string]: string } = {}
-      
-      if (!form.cpfPaciente || form.cpfPaciente.replace(/\D/g, '').length !== 11) {
-        localErrors.cpfPaciente = 'CPF deve ter 11 dígitos.'
-      }
-      if (!form.idPaciente) {
-        localErrors.cpfPaciente = 'Paciente não encontrado. Verifique o CPF.'
-      }
-      if (!form.especialidade) {
-        localErrors.especialidade = 'Selecione uma especialidade.'
-      }
-      if (!form.idEspecialidade) {
-        localErrors.especialidade = 'Especialidade não encontrada.'
-      }
-      if (!form.idMedico || form.idMedico === 0) {
-        localErrors.idMedico = 'Selecione um médico.'
-      }
-      if (!form.dataHora) {
-        localErrors.dataHora = 'Selecione data e hora.'
-      }
-      if (form.tipoConsulta === 'PRESENCIAL' && !form.idUnidade) {
-        localErrors.idUnidade = 'Selecione uma unidade de atendimento.'
-      }
-      
-      if (Object.keys(localErrors).length) {
-        setErrors(localErrors)
-        setLoading(false)
-        return
-      }
 
       const dadosAgendamento: any = {
         idPaciente: form.idPaciente,
@@ -606,7 +583,7 @@ export default function AdminAgendamentos() {
         setSucesso('Agendamento criado com sucesso!')
       }
       
-      setForm({ 
+      reset({ 
         cpfPaciente: '', 
         idPaciente: undefined,
         idMedico: 0,
@@ -622,11 +599,11 @@ export default function AdminAgendamentos() {
       setDataHoraOriginal('')
       setMostrarAvisoReagendamento(false)
       setConfirmadoReagendamento(false)
+      setIdMedicoOriginal(undefined)
       carregarAgendamentos(filtroStatus)
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : 'Erro inesperado'
-      setErrors(prev => ({ ...prev, geral: mensagem }))
-      setErro('')
+      setErro(mensagem)
     } finally {
       setLoading(false)
     }
@@ -797,7 +774,7 @@ export default function AdminAgendamentos() {
               onClick={() => {
                 setMostrarFormulario(!mostrarFormulario)
                 if (!mostrarFormulario) {
-                  setForm({ 
+                  reset({ 
                     cpfPaciente: '', 
                     idPaciente: undefined,
                     idMedico: 0,
@@ -809,9 +786,9 @@ export default function AdminAgendamentos() {
                   })
                   setNomePaciente('')
                   setEditandoId(null)
+                  setIdMedicoOriginal(undefined)
                   setErro('')
                   setSucesso('')
-                  setErrors({})
                 }
               }}
               className="hover:opacity-70 transition-opacity p-2 bg-green-100 rounded text-green-600 flex-shrink-0 min-h-[44px] sm:min-h-0 flex items-center justify-center"
@@ -1056,10 +1033,7 @@ export default function AdminAgendamentos() {
                         type="button"
                         onClick={() => {
                           setMostrarAvisoReagendamento(false)
-                          setForm(prev => ({
-                            ...prev,
-                            dataHora: dataHoraOriginal
-                          }))
+                          setValue('dataHora', dataHoraOriginal, { shouldValidate: false })
                         }}
                         className="flex-1 bg-gray-200 text-gray-800 px-4 py-2.5 rounded-lg font-semibold hover:bg-gray-300 transition-colors text-sm sm:text-base min-h-[44px] sm:min-h-0"
                       >
@@ -1079,7 +1053,8 @@ export default function AdminAgendamentos() {
                     setDataHoraOriginal('')
                     setMostrarAvisoReagendamento(false)
                     setConfirmadoReagendamento(false)
-                    setForm({ 
+                    setIdMedicoOriginal(undefined)
+                    reset({ 
                       cpfPaciente: '', 
                       idPaciente: undefined,
                       idMedico: 0,
@@ -1092,7 +1067,6 @@ export default function AdminAgendamentos() {
                     setNomePaciente('')
                     setErro('')
                     setSucesso('')
-                    setErrors({})
                   }}
                   disabled={loading}
                   className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 min-h-[44px] sm:min-h-0 flex items-center justify-center"
@@ -1104,21 +1078,28 @@ export default function AdminAgendamentos() {
                 </button>
               </div>
               
-              <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
+              <form onSubmit={handleSubmit(onSubmit)} className="p-4 sm:p-6 space-y-4">
                 <div>
                   <label htmlFor="cpfPaciente" className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">CPF do Paciente</label>
                   <input 
                     id="cpfPaciente" 
-                    name="cpfPaciente" 
+                    {...register('cpfPaciente', {
+                      required: 'CPF é obrigatório',
+                      validate: (value) => {
+                        if (!value) return 'CPF é obrigatório'
+                        const cpfLimpo = value.replace(/\D/g, '')
+                        if (cpfLimpo.length !== 11) {
+                          return 'CPF deve ter 11 dígitos.'
+                        }
+                        return true
+                      }
+                    })} 
                     type="text"
-                    value={form.cpfPaciente || ''} 
-                    onChange={handleChange} 
                     placeholder="000.000.000-00"
-                    required
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm sm:text-base min-h-[44px] sm:min-h-0"
                   />
                   {errors.cpfPaciente && (
-                    <div className="mt-1 text-xs sm:text-sm text-red-600">{errors.cpfPaciente}</div>
+                    <div className="mt-1 text-xs sm:text-sm text-red-600">{errors.cpfPaciente.message}</div>
                   )}
                   {loadingPaciente && (
                     <div className="mt-1 text-xs sm:text-sm text-blue-600">Buscando paciente...</div>
@@ -1143,10 +1124,7 @@ export default function AdminAgendamentos() {
                   <label htmlFor="especialidade" className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Especialidade</label>
                   <select 
                     id="especialidade" 
-                    name="especialidade" 
-                    value={form.especialidade} 
-                    onChange={handleChange} 
-                    required
+                    {...register('especialidade', { required: 'Selecione uma especialidade' })} 
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm sm:text-base min-h-[44px] sm:min-h-0"
                   >
                     <option value="">Selecione uma especialidade</option>
@@ -1157,22 +1135,31 @@ export default function AdminAgendamentos() {
                     ))}
                   </select>
                   {errors.especialidade && (
-                    <div className="mt-1 text-xs sm:text-sm text-red-600">{errors.especialidade}</div>
+                    <div className="mt-1 text-xs sm:text-sm text-red-600">{errors.especialidade.message}</div>
                   )}
                 </div>
 
                 <div>
                   <label htmlFor="idMedico" className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Médico</label>
+                  {carregandoMedicos && (
+                    <div className="mb-2 text-xs sm:text-sm text-blue-600">Carregando médico...</div>
+                  )}
                   <select 
                     id="idMedico" 
-                    name="idMedico" 
-                    value={form.idMedico} 
-                    onChange={handleChange} 
-                    required
-                    disabled={!form.especialidade}
+                    {...register('idMedico', { 
+                      required: 'Selecione um médico',
+                      validate: (value) => value !== 0 || 'Selecione um médico'
+                    })} 
+                    disabled={!especialidadeValue || carregandoMedicos}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed text-sm sm:text-base min-h-[44px] sm:min-h-0"
                   >
-                    <option value={0}>{form.especialidade ? 'Selecione um médico' : 'Selecione uma especialidade primeiro'}</option>
+                    <option value={0}>
+                      {carregandoMedicos 
+                        ? 'Carregando médico...' 
+                        : especialidadeValue 
+                          ? 'Selecione um médico' 
+                          : 'Selecione uma especialidade primeiro'}
+                    </option>
                     {medicosFiltrados.map((m) => (
                       <option key={m.idMedico} value={m.idMedico}>
                         {m.nome} - {m.crmMedico}
@@ -1180,7 +1167,7 @@ export default function AdminAgendamentos() {
                     ))}
                   </select>
                   {errors.idMedico && (
-                    <div className="mt-1 text-xs sm:text-sm text-red-600">{errors.idMedico}</div>
+                    <div className="mt-1 text-xs sm:text-sm text-red-600">{errors.idMedico.message}</div>
                   )}
                 </div>
 
@@ -1188,17 +1175,14 @@ export default function AdminAgendamentos() {
                   <label htmlFor="dataHora" className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Data e Hora</label>
                   <input 
                     id="dataHora" 
-                    name="dataHora" 
+                    {...register('dataHora', { required: 'Selecione data e hora' })} 
                     type="datetime-local"
-                    value={form.dataHora} 
-                    onChange={handleChange} 
                     min="2000-01-01T00:00"
                     max="9999-12-31T23:59"
-                    required
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm sm:text-base min-h-[44px] sm:min-h-0"
                   />
                   {errors.dataHora && (
-                    <div className="mt-1 text-xs sm:text-sm text-red-600">{errors.dataHora}</div>
+                    <div className="mt-1 text-xs sm:text-sm text-red-600">{errors.dataHora.message}</div>
                   )}
                 </div>
 
@@ -1206,9 +1190,7 @@ export default function AdminAgendamentos() {
                   <label htmlFor="tipoConsulta" className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Tipo de Atendimento</label>
                   <select 
                     id="tipoConsulta" 
-                    name="tipoConsulta" 
-                    value={form.tipoConsulta} 
-                    onChange={handleChange}
+                    {...register('tipoConsulta')}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm sm:text-base min-h-[44px] sm:min-h-0"
                   >
                     <option value="PRESENCIAL">Presencial</option>
@@ -1216,15 +1198,14 @@ export default function AdminAgendamentos() {
                   </select>
                 </div>
 
-                {form.tipoConsulta === 'PRESENCIAL' && (
+                {tipoConsultaValue === 'PRESENCIAL' && (
                   <div>
                     <label htmlFor="idUnidade" className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Unidade de Atendimento</label>
                     <select 
                       id="idUnidade" 
-                      name="idUnidade" 
-                      value={form.idUnidade || ''} 
-                      onChange={handleChange}
-                      required
+                      {...register('idUnidade', { 
+                        required: tipoConsultaValue === 'PRESENCIAL' ? 'Selecione uma unidade' : false
+                      })} 
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm sm:text-base min-h-[44px] sm:min-h-0"
                     >
                       <option value="">Selecione uma unidade</option>
@@ -1235,13 +1216,13 @@ export default function AdminAgendamentos() {
                       ))}
                     </select>
                     {errors.idUnidade && (
-                      <div className="mt-1 text-xs sm:text-sm text-red-600">{errors.idUnidade}</div>
+                      <div className="mt-1 text-xs sm:text-sm text-red-600">{errors.idUnidade.message}</div>
                     )}
                   </div>
                 )}
 
-                {errors.geral && (
-                  <div className="text-xs sm:text-sm text-red-600">{errors.geral}</div>
+                {erro && (
+                  <div className="text-xs sm:text-sm text-red-600">{erro}</div>
                 )}
                 
                 <div className="flex flex-col sm:flex-row gap-3 pt-4">
@@ -1253,7 +1234,8 @@ export default function AdminAgendamentos() {
                       setDataHoraOriginal('')
                       setMostrarAvisoReagendamento(false)
                       setConfirmadoReagendamento(false)
-                      setForm({ 
+                      setIdMedicoOriginal(undefined)
+                      reset({ 
                         cpfPaciente: '', 
                         idPaciente: undefined,
                         idMedico: 0,
@@ -1266,7 +1248,6 @@ export default function AdminAgendamentos() {
                       setNomePaciente('')
                       setErro('')
                       setSucesso('')
-                      setErrors({})
                     }}
                     disabled={loading}
                     className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white min-h-[44px] sm:min-h-0 text-sm sm:text-base"

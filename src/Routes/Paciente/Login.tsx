@@ -1,29 +1,36 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
 import { authenticateLogin } from '../../Types/AutenticacaoLogin'
 import Botao from '../../Components/Botao/Botao'
 import hcLogo from '../../assets/img/hc.png'
 
+interface LoginFormData {
+  username: string
+  senha: string
+}
+
 export default function Login() {
-  const [formData, setFormData] = useState({
-    username: '',
-    senha: ''
-  })
   const [userType, setUserType] = useState<'paciente' | 'admin'>('paciente')
   const navigate = useNavigate()
-
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
+    defaultValues: {
+      username: '',
+      senha: ''
+    }
+  })
+
+  const onSubmit = async (data: LoginFormData) => {
     setError('')
     setLoading(true)
     try {
       if (userType === 'admin') {
-        await authenticateLogin({ username: formData.username, senha: formData.senha })
+        await authenticateLogin({ username: data.username, senha: data.senha })
         sessionStorage.setItem('role', 'admin')
-        sessionStorage.setItem('username', formData.username)
+        sessionStorage.setItem('username', data.username)
         navigate('/admin')
         return
       }
@@ -34,14 +41,6 @@ export default function Login() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
   }
 
   return (
@@ -94,7 +93,7 @@ export default function Login() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {userType === 'admin' && (
             <>
               <div>
@@ -104,13 +103,16 @@ export default function Login() {
                 <input
                   type="text"
                   id="username"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  required
+                  {...register('username', { 
+                    required: 'Username é obrigatório',
+                    validate: (value) => userType === 'admin' ? value.length > 0 : true
+                  })}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   placeholder="User"
                 />
+                {errors.username && (
+                  <div className="mt-1 text-sm text-red-600">{errors.username.message}</div>
+                )}
               </div>
 
               <div>
@@ -120,13 +122,16 @@ export default function Login() {
                 <input
                   type="password"
                   id="senha"
-                  name="senha"
-                  value={formData.senha}
-                  onChange={handleChange}
-                  required
+                  {...register('senha', { 
+                    required: 'Senha é obrigatória',
+                    validate: (value) => userType === 'admin' ? value.length > 0 : true
+                  })}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   placeholder="Sua senha"
                 />
+                {errors.senha && (
+                  <div className="mt-1 text-sm text-red-600">{errors.senha.message}</div>
+                )}
               </div>
             </>
           )}
