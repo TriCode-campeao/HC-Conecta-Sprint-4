@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import Botao from '../../Components/Botao/Botao'
 import BotaoVoltarHome from '../../Components/BotaoVoltarHome/BotaoVoltarHome'
 import guiaIcon from '../../assets/img/Icones/guia.png'
@@ -7,7 +7,6 @@ import guiaIcon from '../../assets/img/Icones/guia.png'
 export default function FAQ() {
   const [feedback, setFeedback] = useState<'none' | 'yes' | 'no'>('none')
   const location = useLocation()
-  const navigate = useNavigate()
 
   useEffect(() => {
     if (location.state?.fromFAQDetalhe) {
@@ -156,13 +155,14 @@ export default function FAQ() {
 
           {feedback === 'no' && (
             <div className="text-center">
-              <Botao
-                onClick={() => navigate('/contato')}
-                variant="primary"
-                size="lg"
-              >
-                Entre em contato conosco!
-              </Botao>
+              <Link to="/contato">
+                <Botao
+                  variant="primary"
+                  size="lg"
+                >
+                  Entre em contato conosco!
+                </Botao>
+              </Link>
             </div>
           )}
         </section>
