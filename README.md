@@ -1,4 +1,4 @@
-# 🏥 HC Conecta 
+# 🏥 HC Conecta
 
 # 📋 Sobre o Projeto
 
